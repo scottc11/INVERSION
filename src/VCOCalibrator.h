@@ -4,48 +4,54 @@
 #include "main.h"
 #include "TouchChannel.h"
 #include "VoltToFreqPredictor.h"
+#include "ArrayMethods.h"
 
 #define DAC_FLOOR_INDEX 0
 #define DAC_MID_INDEX 24
-#define DAC_CEIL_INDEX 60
+#define DAC_CEIL_INDEX 64
+#define NUM_INTERPOLATION 4
 
 const float VCO_SAMPLE_RATE_HZ = 1 / VCO_SAMPLE_RATE_US * 1000000; // may need to cast all these values to floats
 
 class VCOCalibrator {
 public:
-    enum State {
-        SAMPLING,
-        SAMPLING_LOW,
+    enum State
+    {
+        SAMPLING_FLOOR,
         SAMPLING_MID,
         SAMPLING_HIGH,
-        CALIBRATING
+        SAMPLING_CEIL
     };
 
     VCOCalibrator(){};
     
     Ticker ticker;                                // for sampling frequence at a given sample rate
     TouchChannel *channel;                        // pointer to channel to be calibrated
-    VoltToFreqPredictor samples;
-    State currState;
+    volatile State currState;
     volatile bool sampleVCO;
 
-    int currVCOInputVal;                          // the current sampled value of sinewave input
+    int sampleIndex = 0;                          // for iterating
+    std::pair<float, float> samples[NUM_INTERPOLATION];
+
+    int currVCOInputVal;                      // the current sampled value of sinewave input
     int prevVCOInputVal;                          // the previous sampled value of sinewave input
     bool slopeIsPositive;                         // whether the sine wave is rising or falling
     float avgFreq;
+    int initialPitchIndex;                        // this will be the lowest frequency the DAC will target
+
     volatile float vcoFrequency;                  // latest frequency sample of VCO
     volatile int numSamplesTaken;                 // How many times we have sampled the zero crossing (used in frequency calculation formula)
-
     volatile int freqSampleIndex = 0;             // incrementing value to place current frequency sample into array
     volatile float freqSamples[MAX_FREQ_SAMPLES]; // array of frequency samples for obtaining the running average of the VCO
     
 
     void setChannel(TouchChannel *chan);
     void startCalibration();
-    void disableCalibrationMode();
-    void calibrateVCO();
+    void disableCalibration();
+    bool calibrateVCO();
     void sampleVCOFrequency();
     float calculateAverageFreq();
+    void generateResults();
 };
 
 // Notes are separated by "semitone" intervals.

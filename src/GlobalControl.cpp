@@ -51,7 +51,12 @@ void GlobalControl::tickChannels() {
 void GlobalControl::poll() {
   switch (mode) {
     case CALIBRATING_1VO:
-      calibrator.calibrateVCO();
+      if (!calibrator.calibrateVCO()) {
+        // save to flash
+        this->saveCalibrationToFlash();
+        // break out of calibration mode
+        this->mode = Mode::DEFAULT;
+      }
       break;
     case CALIBRATING_BENDER:
       this->pollButtons();
@@ -173,12 +178,7 @@ void GlobalControl::handleButtonPress(int pad) {
     case RESET:
       break;
     case CALIBRATE_A:
-      if (this->mode == CALIBRATING_1VO) {
-        // save calibration
-        this->mode = Mode::DEFAULT;
-      } else {
-        calibrateChannel(0);
-      }
+      calibrateChannel(0);
       break;
     case CALIBRATE_BENDER:
       if (this->mode == CALIBRATING_BENDER) {
@@ -321,8 +321,10 @@ void GlobalControl::saveCalibrationToFlash(bool reset /* false */)
     // load 1VO calibration data into buffer
     for (int i = 0; i < DAC_1VO_ARR_SIZE; i++) // leave the last two indexes for bender values
     {
-      int index = i + CALIBRATION_ARR_SIZE * chan;                                         // determine flash Data index position based on channel
-      buffer[index] = reset ? DAC_VOLTAGE_VALUES[i] : channels[chan]->output1V.dacVoltageMap[i]; // either reset values to default, or using existing values saved to class
+      // determine buffer index position based on channel
+      int index = i + CALIBRATION_ARR_SIZE * chan;
+      // copy to buffer
+      buffer[index] = channels[chan]->output1V.dacVoltageMap[i];
     }
     // load max and min Bender calibration data into buffer (two 16bit chars)
     buffer[BENDER_MIN_CAL_INDEX + CALIBRATION_ARR_SIZE * chan] = channels[chan]->bender.minBend;
