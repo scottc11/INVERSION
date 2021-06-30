@@ -1,4 +1,7 @@
 {
+  "requires": [
+    "bare-metal"
+  ],
   "target_overrides": {
     "NUCLEO_F446RE": {
       "target.clock_source": "USE_PLL_HSE_XTAL",
