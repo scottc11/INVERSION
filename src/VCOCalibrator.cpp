@@ -26,51 +26,24 @@ bool VCOCalibrator::calibrateVCO()
     float sampledFrequency;
     int dacIndex = 0;
 
-    // SAMPLE 1
-    channel->setOctaveLed(0, TouchChannel::LedState::HIGH);
-    channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[dacIndex]); // start at bottom most voltage.
-    wait_us(100); // settling time
-    sampledFrequency = this->sampleVCOFrequency();
-    samples[0].first = sampledFrequency;
-    samples[0].second = channel->output1V.dacVoltageMap[dacIndex];
-
+    for (int i = 0; i < NUM_INTERPOLATION; i++)
+    {
+        dacIndex = DAC_SAMPLE_LIST[i];
+        channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[dacIndex]); // start at bottom most voltage.
+        wait_us(500);  // settling time
+        sampledFrequency = this->sampleVCOFrequency();
+        samples[i].first = sampledFrequency;
+        samples[i].second = channel->output1V.dacVoltageMap[dacIndex];
+    }
+    
     // Find the frequency in PITCH_FREQ array closest to the currently sampled frequency
     // use this index value later when calculating predictions
     initialPitchIndex = arr_find_closest_float(const_cast<float *>(PITCH_FREQ), NUM_PITCH_FREQENCIES, samples[0].first);
-
-    // must be less or equal to NUM_PITCH_FREQENCIES
-    if (initialPitchIndex + DAC_1VO_ARR_SIZE > NUM_PITCH_FREQENCIES)
+    if (initialPitchIndex + DAC_1VO_ARR_SIZE > NUM_PITCH_FREQENCIES) // must be less or equal to NUM_PITCH_FREQENCIES
     {
         initialPitchIndex = 0; // start at bottom 🤷‍♂️
     }
-
-    // SAMPLE 2
-    dacIndex = 12;
-    channel->setOctaveLed(1, TouchChannel::LedState::HIGH);
-    channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[dacIndex]);
-    wait_us(100);
-    sampledFrequency = this->sampleVCOFrequency();
-    samples[1].first = sampledFrequency;
-    samples[1].second = channel->output1V.dacVoltageMap[dacIndex];
-
-    // SAMPLE 3
-    dacIndex = 24;
-    channel->setOctaveLed(1, TouchChannel::LedState::HIGH);
-    channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[dacIndex]);
-    wait_us(100);
-    sampledFrequency = this->sampleVCOFrequency();
-    samples[2].first = sampledFrequency;
-    samples[2].second = channel->output1V.dacVoltageMap[dacIndex];
-
-    // SAMPLE 3
-    dacIndex = 63;
-    channel->setOctaveLed(1, TouchChannel::LedState::HIGH);
-    channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[dacIndex]);
-    wait_us(100);
-    sampledFrequency = this->sampleVCOFrequency();
-    samples[3].first = sampledFrequency;
-    samples[3].second = channel->output1V.dacVoltageMap[dacIndex];
-
+    
     // now run the code
     this->generateResults();
     this->disableCalibration();
@@ -102,12 +75,13 @@ float VCOCalibrator::sampleVCOFrequency()
     Timer timer;
     timer.start();
     freqSampleIndex = 0;
-    int currTime;
-    int prevTime;
+    uint64_t currTime = 0;
+    uint64_t prevTime = 0;
     while (freqSampleIndex < MAX_FREQ_SAMPLES)
     {
         currTime = timer.read_us();
-        if (currTime - prevTime >= VCO_SAMPLE_RATE_US)
+        uint64_t difference = currTime - prevTime;
+        if (difference >= VCO_SAMPLE_RATE_US)
         {
             // sample the ADC
             currVCOInputVal = channel->cvInput.read_u16(); // sample the ADC

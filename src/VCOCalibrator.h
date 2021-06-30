@@ -9,9 +9,10 @@
 #define DAC_FLOOR_INDEX 0
 #define DAC_MID_INDEX 24
 #define DAC_CEIL_INDEX 64
-#define NUM_INTERPOLATION 4
+#define NUM_INTERPOLATION 7
 
 const float VCO_SAMPLE_RATE_HZ = 1 / VCO_SAMPLE_RATE_US * 1000000; // may need to cast all these values to floats
+const int DAC_SAMPLE_LIST[7] = {0, 11, 23, 35, 47, 59, 63};
 
 class VCOCalibrator {
 public:
