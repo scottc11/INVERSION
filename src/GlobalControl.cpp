@@ -50,14 +50,6 @@ void GlobalControl::tickChannels() {
 
 void GlobalControl::poll() {
   switch (mode) {
-    case CALIBRATING_1VO:
-      if (!calibrator.calibrateVCO()) {
-        // save to flash
-        this->saveCalibrationToFlash();
-        // break out of calibration mode
-        this->mode = Mode::DEFAULT;
-      }
-      break;
     case CALIBRATING_BENDER:
       this->pollButtons();
       this->calibrateBenders();
@@ -180,6 +172,15 @@ void GlobalControl::handleButtonPress(int pad) {
     case CALIBRATE_A:
       calibrateChannel(0);
       break;
+    case CALIBRATE_B:
+      calibrateChannel(1);
+      break;
+    case CALIBRATE_C:
+      calibrateChannel(2);
+      break;
+    case CALIBRATE_D:
+      calibrateChannel(3);
+      break;
     case CALIBRATE_BENDER:
       if (this->mode == CALIBRATING_BENDER) {
         this->saveCalibrationToFlash();
@@ -301,9 +302,12 @@ void GlobalControl::handleClockReset() {
 
 
 void GlobalControl::calibrateChannel(int chan) {
-  this->mode = Mode::CALIBRATING_1VO;
+  metronome->stop();
   calibrator.setChannel(channels[chan]);
   calibrator.startCalibration();
+  calibrator.calibrateVCO();
+  this->saveCalibrationToFlash();
+  metronome->start();
 }
 
 /**

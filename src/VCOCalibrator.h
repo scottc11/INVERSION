@@ -49,7 +49,7 @@ public:
     void startCalibration();
     void disableCalibration();
     bool calibrateVCO();
-    void sampleVCOFrequency();
+    float sampleVCOFrequency();
     float calculateAverageFreq();
     void generateResults();
 };

@@ -62,6 +62,14 @@ void Metronome::step() {
   }
 }
 
+void Metronome::start() {
+  ticker.attach_us(callback(this, &Metronome::tick), tickInterval);
+}
+
+void Metronome::stop() {
+  ticker.detach();
+}
+
 void Metronome::attachTickCallback(Callback<void()> func) {
   callbackFn = func;
 }

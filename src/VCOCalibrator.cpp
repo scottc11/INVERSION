@@ -14,11 +14,6 @@ void VCOCalibrator::startCalibration()
     currState = SAMPLING_FLOOR;
 
     channel->output1V.resetVoltageMap();
-
-    channel->setOctaveLed(0, TouchChannel::LOW);
-    channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[0]); // start at bottom most voltage.
-
-    ticker.attach_us(callback(this, &VCOCalibrator::sampleVCOFrequency), VCO_SAMPLE_RATE_US);
 }
 
 void VCOCalibrator::disableCalibration()
@@ -28,68 +23,57 @@ void VCOCalibrator::disableCalibration()
 
 bool VCOCalibrator::calibrateVCO()
 {
-    // wait till MAX_FREQ_SAMPLES has been obtained
-    if (this->sampleVCO != true)
+    float sampledFrequency;
+    int dacIndex = 0;
+
+    // SAMPLE 1
+    channel->setOctaveLed(0, TouchChannel::LedState::HIGH);
+    channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[dacIndex]); // start at bottom most voltage.
+    wait_us(100); // settling time
+    sampledFrequency = this->sampleVCOFrequency();
+    samples[0].first = sampledFrequency;
+    samples[0].second = channel->output1V.dacVoltageMap[dacIndex];
+
+    // Find the frequency in PITCH_FREQ array closest to the currently sampled frequency
+    // use this index value later when calculating predictions
+    initialPitchIndex = arr_find_closest_float(const_cast<float *>(PITCH_FREQ), NUM_PITCH_FREQENCIES, samples[0].first);
+
+    // must be less or equal to NUM_PITCH_FREQENCIES
+    if (initialPitchIndex + DAC_1VO_ARR_SIZE > NUM_PITCH_FREQENCIES)
     {
-        switch (currState) {
-            
-            case State::SAMPLING_FLOOR:
-                channel->setOctaveLed(0, TouchChannel::LedState::HIGH);
-                samples[0].first = this->calculateAverageFreq(); // determine the average frequency of all frequency samples
-                samples[0].second = channel->output1V.dacVoltageMap[0];
-
-                // Find the frequency in PITCH_FREQ array closest to the currently sampled frequency
-                // use this index value later when calculating predictions
-                initialPitchIndex = arr_find_closest_float(const_cast<float *>(PITCH_FREQ), NUM_PITCH_FREQENCIES, samples[0].first);
-
-                // must be less or equal to NUM_PITCH_FREQENCIES
-                if (initialPitchIndex + DAC_1VO_ARR_SIZE > NUM_PITCH_FREQENCIES) {
-                    initialPitchIndex = 0; // start at bottom 🤷‍♂️
-                }
-
-                // prepare sample s2
-                channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[24]);
-                wait_us(100);
-                freqSampleIndex = 0;
-                currState = State::SAMPLING_MID;
-                break;
-
-            case State::SAMPLING_MID:
-                channel->setOctaveLed(1, TouchChannel::LedState::HIGH);
-                samples[1].first = this->calculateAverageFreq(); // determine the average frequency of all frewuency samples
-                samples[1].second = channel->output1V.dacVoltageMap[24];
-                // prepare sample s3
-                channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[40]);
-                wait_us(100);
-                freqSampleIndex = 0;
-                currState = State::SAMPLING_HIGH;
-                break;
-            
-            case State::SAMPLING_HIGH:
-                channel->setOctaveLed(2, TouchChannel::LedState::HIGH);
-                samples[2].first = this->calculateAverageFreq(); // determine the average frequency of all frewuency samples
-                samples[2].second = channel->output1V.dacVoltageMap[40];
-                // prepare sample 4
-                channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[63]);
-                wait_us(100);
-                freqSampleIndex = 0;
-                currState = State::SAMPLING_CEIL;
-                break;
-            
-            case State::SAMPLING_CEIL:
-                channel->setOctaveLed(4, TouchChannel::LedState::HIGH);
-                samples[3].first = this->calculateAverageFreq(); // determine the average frequency of all frewuency samples
-                samples[3].second = channel->output1V.dacVoltageMap[63];
-
-                // now run the code
-                this->generateResults();
-                this->disableCalibration();
-                return false; // tell calling function to break out of calibration
-            default:
-                break;
-        }
-        sampleVCO = true;
+        initialPitchIndex = 0; // start at bottom 🤷‍♂️
     }
+
+    // SAMPLE 2
+    dacIndex = 12;
+    channel->setOctaveLed(1, TouchChannel::LedState::HIGH);
+    channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[dacIndex]);
+    wait_us(100);
+    sampledFrequency = this->sampleVCOFrequency();
+    samples[1].first = sampledFrequency;
+    samples[1].second = channel->output1V.dacVoltageMap[dacIndex];
+
+    // SAMPLE 3
+    dacIndex = 24;
+    channel->setOctaveLed(1, TouchChannel::LedState::HIGH);
+    channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[dacIndex]);
+    wait_us(100);
+    sampledFrequency = this->sampleVCOFrequency();
+    samples[2].first = sampledFrequency;
+    samples[2].second = channel->output1V.dacVoltageMap[dacIndex];
+
+    // SAMPLE 3
+    dacIndex = 63;
+    channel->setOctaveLed(1, TouchChannel::LedState::HIGH);
+    channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[dacIndex]);
+    wait_us(100);
+    sampledFrequency = this->sampleVCOFrequency();
+    samples[3].first = sampledFrequency;
+    samples[3].second = channel->output1V.dacVoltageMap[dacIndex];
+
+    // now run the code
+    this->generateResults();
+    this->disableCalibration();
     return true;
 }
 
@@ -113,41 +97,44 @@ float VCOCalibrator::calculateAverageFreq()
  * TODO: implement CircularBuffer -> https://os.mbed.com/docs/mbed-os/v5.14/apis/circularbuffer.html as it is "thread safe"
  * 
 */
-void VCOCalibrator::sampleVCOFrequency()
+float VCOCalibrator::sampleVCOFrequency()
 {
-    if (sampleVCO)
+    Timer timer;
+    timer.start();
+    freqSampleIndex = 0;
+    int currTime;
+    int prevTime;
+    while (freqSampleIndex < MAX_FREQ_SAMPLES)
     {
-        currVCOInputVal = channel->cvInput.read_u16();  // sample the ADC
-        // NEGATIVE SLOPE
-        if (currVCOInputVal >= (VCO_ZERO_CROSSING + VCO_ZERO_CROSS_THRESHOLD) && prevVCOInputVal < (VCO_ZERO_CROSSING + VCO_ZERO_CROSS_THRESHOLD) && slopeIsPositive)
+        currTime = timer.read_us();
+        if (currTime - prevTime >= VCO_SAMPLE_RATE_US)
         {
-            slopeIsPositive = false;
-        }
-        // POSITIVE SLOPE
-        else if (currVCOInputVal <= (VCO_ZERO_CROSSING - VCO_ZERO_CROSS_THRESHOLD) && prevVCOInputVal > (VCO_ZERO_CROSSING - VCO_ZERO_CROSS_THRESHOLD) && !slopeIsPositive)
-        {
-            float vcoPeriod = numSamplesTaken;             // how many samples have occurred between positive zero crossings
-            vcoFrequency = 8000.0 / vcoPeriod;             // sample rate divided by period of input signal
-            freqSamples[freqSampleIndex] = vcoFrequency;   // store sample in array
-            numSamplesTaken = 0;                           // reset sample count to zero for the next sampling routine
-
-            if (freqSampleIndex < MAX_FREQ_SAMPLES)
+            // sample the ADC
+            currVCOInputVal = channel->cvInput.read_u16(); // sample the ADC
+            // NEGATIVE SLOPE
+            if (currVCOInputVal >= (VCO_ZERO_CROSSING + VCO_ZERO_CROSS_THRESHOLD) && prevVCOInputVal < (VCO_ZERO_CROSSING + VCO_ZERO_CROSS_THRESHOLD) && slopeIsPositive)
             {
-                freqSampleIndex += 1;
+                slopeIsPositive = false;
             }
-            else
+            // POSITIVE SLOPE
+            else if (currVCOInputVal <= (VCO_ZERO_CROSSING - VCO_ZERO_CROSS_THRESHOLD) && prevVCOInputVal > (VCO_ZERO_CROSSING - VCO_ZERO_CROSS_THRESHOLD) && !slopeIsPositive)
             {
-                freqSampleIndex = 0;
-                sampleVCO = false;
+                float vcoPeriod = numSamplesTaken;           // how many samples have occurred between positive zero crossings
+                vcoFrequency = 8000.0 / vcoPeriod;           // sample rate divided by period of input signal
+                freqSamples[freqSampleIndex] = vcoFrequency; // store sample in array
+                numSamplesTaken = 0;                         // reset sample count to zero for the next sampling routine
+                freqSampleIndex++;                           // increment sample index by 1
+                slopeIsPositive = true;
             }
-            slopeIsPositive = true;
-        }
 
-        prevVCOInputVal = currVCOInputVal;
-        numSamplesTaken++;
+            prevVCOInputVal = currVCOInputVal;
+            numSamplesTaken++;
+            prevTime = currTime;
+        }
     }
+    timer.stop();
+    return calculateAverageFreq();
 }
-
 
 void VCOCalibrator::generateResults() {
 

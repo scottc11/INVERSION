@@ -59,7 +59,8 @@ public:
   void poll();
   void tick();
   void step();
-  void reset();
+  void start();
+  void stop();
   void setNumberOfSteps(int num);
   void handleEncoder();
   void pollTempoPot();
