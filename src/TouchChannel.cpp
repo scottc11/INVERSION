@@ -39,8 +39,9 @@ void TouchChannel::initIOExpander() {
   io->enableInterupt(CHANNEL_IO_MODE_PIN, SX1509::RISING);
 
   io->pinMode(CHANNEL_LED_MUX_SEL, SX1509::OUTPUT);
-  io->enablePullup(CHANNEL_LED_MUX_SEL);
-  io->digitalWrite(CHANNEL_LED_MUX_SEL, 1);
+  io->setOpenDrain(CHANNEL_LED_MUX_SEL, 1); // unclear whether pullup or open-drain makes a difference
+  io->digitalWrite(CHANNEL_LED_MUX_SEL, 0);
+
   io->ledConfig(CHANNEL_MODE_LED);
   io->ledConfig(CHANNEL_GATE_LED);
 
@@ -101,6 +102,9 @@ void TouchChannel::poll() {
 }
 // ------------------------------------------------------------------------
 
+void TouchChannel::setLEDMux(LedState state) {
+  io->digitalWrite(CHANNEL_LED_MUX_SEL, state);
+}
 
 void TouchChannel::clearLoop() {
   if (this->sequenceContainsEvents) {

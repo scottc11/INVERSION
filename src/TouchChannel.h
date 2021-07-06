@@ -209,6 +209,7 @@ class TouchChannel {
     void ioInteruptFn() { modeChangeDetected = true; }
 
     void initIOExpander();
+    void setLEDMux(LedState state);
     void setLed(int index, LedState state, bool settingUILed=false);
     void setOctaveLed(int octave, LedState state, bool settingUILed=false);
     void setModeLed(LedState state);
