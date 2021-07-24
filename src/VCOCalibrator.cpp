@@ -22,7 +22,6 @@ void VCOCalibrator::disableCalibration()
 
 bool VCOCalibrator::calibrateVCO()
 {
-    float sampledFrequency;
     int dacIndex = 0;
 
     for (int i = 0; i < NUM_INTERPOLATION; i++)
