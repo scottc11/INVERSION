@@ -11,7 +11,6 @@ void VCOCalibrator::startCalibration()
     numSamplesTaken = 0;
     avgFreq = 0;
     sampleVCO = true;
-    currState = SAMPLING_FLOOR;
 
     channel->output1V.resetVoltageMap();
 }
@@ -31,10 +30,14 @@ bool VCOCalibrator::calibrateVCO()
         dacIndex = DAC_SAMPLE_LIST[i];
         channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[dacIndex]); // start at bottom most voltage.
         wait_us(500);  // settling time
-        sampledFrequency = this->sampleVCOFrequency();
-        samples[i].first = sampledFrequency;
+        sampleVCO = true;
+        ticker.attach_us(callback(this, &VCOCalibrator::sampleVCOFrequency), VCO_SAMPLE_RATE_US);
+        while (sampleVCO);
+        ticker.detach();
+        samples[i].first =  calculateAverageFreq();
         samples[i].second = channel->output1V.dacVoltageMap[dacIndex];
     }
+    
     
     // Find the frequency in PITCH_FREQ array closest to the currently sampled frequency
     // use this index value later when calculating predictions
@@ -70,44 +73,39 @@ float VCOCalibrator::calculateAverageFreq()
  * TODO: implement CircularBuffer -> https://os.mbed.com/docs/mbed-os/v5.14/apis/circularbuffer.html as it is "thread safe"
  * 
 */
-float VCOCalibrator::sampleVCOFrequency()
+void VCOCalibrator::sampleVCOFrequency()
 {
-    Timer timer;
-    timer.start();
-    freqSampleIndex = 0;
-    uint64_t currTime = 0;
-    uint64_t prevTime = 0;
-    while (freqSampleIndex < MAX_FREQ_SAMPLES)
+    if (sampleVCO)
     {
-        currTime = timer.read_us();
-        uint64_t difference = currTime - prevTime;
-        if (difference >= VCO_SAMPLE_RATE_US)
+        currVCOInputVal = channel->cvInput.read_u16(); // sample the ADC
+        // NEGATIVE SLOPE
+        if (currVCOInputVal >= (VCO_ZERO_CROSSING + VCO_ZERO_CROSS_THRESHOLD) && prevVCOInputVal < (VCO_ZERO_CROSSING + VCO_ZERO_CROSS_THRESHOLD) && slopeIsPositive)
         {
-            // sample the ADC
-            currVCOInputVal = channel->cvInput.read_u16(); // sample the ADC
-            // NEGATIVE SLOPE
-            if (currVCOInputVal >= (VCO_ZERO_CROSSING + VCO_ZERO_CROSS_THRESHOLD) && prevVCOInputVal < (VCO_ZERO_CROSSING + VCO_ZERO_CROSS_THRESHOLD) && slopeIsPositive)
-            {
-                slopeIsPositive = false;
-            }
-            // POSITIVE SLOPE
-            else if (currVCOInputVal <= (VCO_ZERO_CROSSING - VCO_ZERO_CROSS_THRESHOLD) && prevVCOInputVal > (VCO_ZERO_CROSSING - VCO_ZERO_CROSS_THRESHOLD) && !slopeIsPositive)
-            {
-                float vcoPeriod = numSamplesTaken;           // how many samples have occurred between positive zero crossings
-                vcoFrequency = 8000.0 / vcoPeriod;           // sample rate divided by period of input signal
-                freqSamples[freqSampleIndex] = vcoFrequency; // store sample in array
-                numSamplesTaken = 0;                         // reset sample count to zero for the next sampling routine
-                freqSampleIndex++;                           // increment sample index by 1
-                slopeIsPositive = true;
-            }
-
-            prevVCOInputVal = currVCOInputVal;
-            numSamplesTaken++;
-            prevTime = currTime;
+            slopeIsPositive = false;
         }
+        // POSITIVE SLOPE
+        else if (currVCOInputVal <= (VCO_ZERO_CROSSING - VCO_ZERO_CROSS_THRESHOLD) && prevVCOInputVal > (VCO_ZERO_CROSSING - VCO_ZERO_CROSS_THRESHOLD) && !slopeIsPositive)
+        {
+            float vcoPeriod = numSamplesTaken;           // how many samples have occurred between positive zero crossings
+            vcoFrequency = 8000.f / vcoPeriod;           // sample rate divided by period of input signal
+            freqSamples[freqSampleIndex] = vcoFrequency; // store sample in array
+            numSamplesTaken = 0;                         // reset sample count to zero for the next sampling routine
+
+            if (freqSampleIndex < MAX_FREQ_SAMPLES - 1)
+            {
+                freqSampleIndex += 1;
+            }
+            else
+            {
+                freqSampleIndex = 0;
+                sampleVCO = false;
+            }
+            slopeIsPositive = true;
+        }
+
+        prevVCOInputVal = currVCOInputVal;
+        numSamplesTaken++;
     }
-    timer.stop();
-    return calculateAverageFreq();
 }
 
 void VCOCalibrator::generateResults() {
