@@ -37,7 +37,6 @@ public:
     int currVCOInputVal;                      // the current sampled value of sinewave input
     int prevVCOInputVal;                          // the previous sampled value of sinewave input
     bool slopeIsPositive;                         // whether the sine wave is rising or falling
-    float avgFreq;
     int initialPitchIndex;                        // this will be the lowest frequency the DAC will target
 
     volatile float vcoFrequency;                  // latest frequency sample of VCO
@@ -49,7 +48,8 @@ public:
     void setChannel(TouchChannel *chan);
     void startCalibration();
     void disableCalibration();
-    bool calibrateVCO();
+    bool interpolationCalibration();
+    bool bruteForceCalibration();
     void sampleVCOFrequency();
     float calculateAverageFreq();
     void generateResults();

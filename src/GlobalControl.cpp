@@ -305,7 +305,7 @@ void GlobalControl::calibrateChannel(int chan) {
   metronome->stop();
   calibrator.setChannel(channels[chan]);
   calibrator.startCalibration();
-  calibrator.calibrateVCO();
+  calibrator.bruteForceCalibration();
   this->saveCalibrationToFlash();
   metronome->start();
 }

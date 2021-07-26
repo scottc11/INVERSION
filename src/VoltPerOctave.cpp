@@ -50,8 +50,10 @@ void VoltPerOctave::updateDAC(int index, uint16_t pitchBend)
     }
 }
 
+/**
+ * @brief copy default pre-calibrated dac voltage values into class object member
+*/
 void VoltPerOctave::resetVoltageMap() {
-    // copy default pre-calibrated dac voltage values into class object member
     for (int i = 0; i < DAC_1VO_ARR_SIZE; i++)
     {
         dacVoltageMap[i] = DAC_VOLTAGE_VALUES[i];

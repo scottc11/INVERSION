@@ -9,7 +9,6 @@ void VCOCalibrator::startCalibration()
 {
     freqSampleIndex = 0;
     numSamplesTaken = 0;
-    avgFreq = 0;
     sampleVCO = true;
 
     channel->output1V.resetVoltageMap();
@@ -20,7 +19,95 @@ void VCOCalibrator::disableCalibration()
     ticker.detach(); // disable ticker
 }
 
-bool VCOCalibrator::calibrateVCO()
+bool VCOCalibrator::bruteForceCalibration()
+{
+    float avgFreq = 0;
+    float prevAvgFreq = 0;
+    float tolerance = 0.1;   // tolerable frequency tuning difference
+    bool overshoot = false;  // 
+
+    for (int i = 0; i < DAC_1VO_ARR_SIZE; i++)
+    {
+        // initialize
+        bool calibrating = true;       // while loop flag
+        int calibrationAttemps = 0;    // for limiting the number of calibration attempts
+        int dacAdjustment = DEFAULT_VOLTAGE_ADJMNT;
+        
+        // handle first iteration of calibrating by finding the frequency in PITCH_FREQ array closest to the currently sampled frequency
+        if (i == 0) {
+            // sample VCO
+            channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[i]);
+            wait_us(500); // settle DAC
+            sampleVCO = true;
+            ticker.attach_us(callback(this, &VCOCalibrator::sampleVCOFrequency), VCO_SAMPLE_RATE_US);
+            while (sampleVCO);
+            ticker.detach();
+
+            avgFreq = calculateAverageFreq();
+            initialPitchIndex = arr_find_closest_float(const_cast<float *>(PITCH_FREQ), NUM_PITCH_FREQENCIES, avgFreq);
+        }
+        
+        while (calibrating)
+        {
+            // sample VCO
+            channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[i]);
+            wait_us(500); // settle DAC
+            sampleVCO = true;
+            ticker.attach_us(callback(this, &VCOCalibrator::sampleVCOFrequency), VCO_SAMPLE_RATE_US);
+            while (sampleVCO);
+            ticker.detach();
+            
+            // pull target frequency from pre-set frequency values
+            float targetFreq = PITCH_FREQ[initialPitchIndex + i];
+
+            avgFreq = calculateAverageFreq();
+
+            // if avgFreq is close enough to targetFreq, or max cal attempts has been reached, break out of while loop and move to next 'note'
+            if ((avgFreq <= targetFreq + tolerance && avgFreq >= targetFreq - tolerance) || calibrationAttemps > MAX_CALIB_ATTEMPTS)
+            {
+                calibrating = false;
+            }
+
+            // if avgFreq not close enough targetFreq
+            else
+            {
+
+                uint16_t currDacValue = channel->output1V.dacVoltageMap[i]; // pre-calibrated value to be adjusted
+
+                // every time avgFreq over/undershoots the desired frequency, decrement the 'dacAdjustment' value by half.
+                if (avgFreq > targetFreq + tolerance) // overshot target freq
+                { 
+                    if (prevAvgFreq < targetFreq - tolerance)
+                    {
+                        overshoot = true;
+                        dacAdjustment = (dacAdjustment / 2) + 1; // + 1 so it never becomes zero
+                    }
+                    currDacValue -= dacAdjustment;
+                }
+
+                else if (avgFreq < targetFreq - tolerance) // undershot target freq
+                {
+                    if (prevAvgFreq > targetFreq + tolerance)
+                    {
+                        overshoot = false;
+                        dacAdjustment = (dacAdjustment / 2) + 1; // so it never becomes zero
+                    }
+                    currDacValue += dacAdjustment;
+                }
+
+                // replace current DAC value with adjusted value (NOTE: must cap value or else it will roll over to zero)
+                channel->output1V.dacVoltageMap[i] = currDacValue > 65535 ? 65535 : currDacValue;
+                prevAvgFreq = avgFreq;
+                calibrationAttemps += 1;
+            }
+        }
+    }
+
+    // finished calibrating
+    return true;
+}
+
+bool VCOCalibrator::interpolationCalibration()
 {
     int dacIndex = 0;
 

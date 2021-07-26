@@ -5,6 +5,10 @@
 #include "DAC8554.h"
 #include "Algorithms.h"
 
+#ifndef DAC_1VO_ARR_SIZE
+#define DAC_1VO_ARR_SIZE 64
+#endif
+
 const int PB_RANGE_MAP[8] = {1, 2, 3, 4, 5, 7, 10, 12};
 class VoltPerOctave
 {
