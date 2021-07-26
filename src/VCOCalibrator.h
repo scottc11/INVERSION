@@ -3,49 +3,61 @@
 
 #include "main.h"
 #include "TouchChannel.h"
+#include "VoltToFreqPredictor.h"
+#include "ArrayMethods.h"
+
+#define DAC_FLOOR_INDEX 0
+#define DAC_MID_INDEX 24
+#define DAC_CEIL_INDEX 64
+#define NUM_INTERPOLATION 7
 
 const float VCO_SAMPLE_RATE_HZ = 1 / VCO_SAMPLE_RATE_US * 1000000; // may need to cast all these values to floats
+const int DAC_SAMPLE_LIST[7] = {0, 11, 23, 35, 47, 59, 63};
 
 class VCOCalibrator {
 public:
+    enum State
+    {
+        SAMPLING_FLOOR,
+        SAMPLING_MID,
+        SAMPLING_HIGH,
+        SAMPLING_CEIL
+    };
 
     VCOCalibrator(){};
     
     Ticker ticker;                                // for sampling frequence at a given sample rate
     TouchChannel *channel;                        // pointer to channel to be calibrated
+    volatile State currState;
+    volatile bool sampleVCO;
 
-    int currVCOInputVal;                          // the current sampled value of sinewave input
+    int sampleIndex = 0;                          // for iterating
+    std::pair<float, float> samples[NUM_INTERPOLATION];
+
+    int currVCOInputVal;                      // the current sampled value of sinewave input
     int prevVCOInputVal;                          // the previous sampled value of sinewave input
     bool slopeIsPositive;                         // whether the sine wave is rising or falling
-    float prevAvgFreq;
-    float avgFreq;
-    int adjustment = DEFAULT_VOLTAGE_ADJMNT;
+    int initialPitchIndex;                        // this will be the lowest frequency the DAC will target
+
     volatile float vcoFrequency;                  // latest frequency sample of VCO
     volatile int numSamplesTaken;                 // How many times we have sampled the zero crossing (used in frequency calculation formula)
-    float initialPitchIndex;                      // before calibration, sample the oscillator frequency then find the nearest value in PITCH_FREQ array (to start with / root note)
-    int pitchIndex;                               // 0..31 --> when calibrating, increment this value to step each voltage representation of a semi-tone via dacVoltageValues[]
-    int calLedIndex;                              //
-    bool overshoot;                               // a flag to determine if the new voltage adjustment overshot/undershot the target frequency
-    int calibrationAttemps;                       // when this num exceeds MAX_CALIB_ATTEMPTS, accept your failure and move on.
-    bool calibrationFinished;                     // flag to tell program when calibration process is finished
-    volatile bool readyToCalibrate;               // flag telling polling loop when enough freq average samples have been taken to accurately calibrate
     volatile int freqSampleIndex = 0;             // incrementing value to place current frequency sample into array
     volatile float freqSamples[MAX_FREQ_SAMPLES]; // array of frequency samples for obtaining the running average of the VCO
+    
 
     void setChannel(TouchChannel *chan);
-    void enableCalibrationMode();
-    void disableCalibrationMode();
-    void calibrateVCO();
+    void startCalibration();
+    void disableCalibration();
+    bool interpolationCalibration();
+    bool bruteForceCalibration();
     void sampleVCOFrequency();
     float calculateAverageFreq();
+    void generateResults();
 };
-
-
-
 
 // Notes are separated by "semitone" intervals.
 // There are 12 seimtones in each octave, and fundamental frequencies are logarithmically spaced,
-// so the each note fundamental frequency is 2(1/12) = 1.0595 times the previous frequency.
+// so the fundamental frequency of each note is 2(1/12) = 1.0595 times the previous frequency.
 // 1145 * .9405 ==
 #define NUM_PITCH_FREQENCIES 96
 
@@ -147,24 +159,4 @@ const float PITCH_FREQ[NUM_PITCH_FREQENCIES] = {
     7458.62, //  A#8/Bb8
     7902.13  //  B8
 };
-
-const float FREQ_MAP[32][3] = {
-    {130.81, 138.59, 146.83},    //  C3  C#3/Db3   D3
-    {155.56, 164.81, 174.61},    //  D#3/Eb3  E3	 F3
-    {185.00, 196.00, 207.65},    //  F#3/Gb3  G3  G#3/Ab3
-    {220.00, 233.08, 246.94},    //  A3         A#3/Bb3  B3
-    {261.63, 277.18, 293.66},    //  C4        C#4/Db4   D4
-    {311.13, 329.63, 349.23},    //  D#4/Eb4     E4      F4
-    {369.99, 392.00, 415.30},    //  F#4/Gb4     G4     G#4/Ab4
-    {440.00, 466.16, 493.88},    //  A4        A#4/Bb4   B4
-    {523.25, 554.37, 587.33},    //  C5       C#5/Db5    D5
-    {622.25, 659.26, 698.46},    //  D#5/Eb5     E5      F5
-    {739.99, 783.99, 830.61},    //  F#5/Gb5     G5    G#5/Ab5
-    {880.00, 932.33, 987.77},    //  A5        A#5/Bb5   B5
-    {1046.50, 1108.73, 1174.66}, //  C6       C#6/Db6    D6
-    {1244.51, 1318.51, 1396.91}, //  D#6/Eb6    E6       F6
-    {1479.98, 1567.98, 1661.22}, //  F#6/Gb6    G6     G#6/Ab6
-    {1760.00, 1864.66, 1975.53}, //  A6      A#6/Bb6    B6
-};
-
 #endif

@@ -2,7 +2,7 @@
 
 void TouchChannel::initSequencer()
 {
-    numLoopSteps = DEFAULT_CHANNEL_LOOP_STEPS;
+    numLoopSteps = DEFAULT_SEQ_LENGTH;
     loopMultiplier = 1;
     timeQuantizationMode = QUANT_NONE;
     currStep = 0;
@@ -68,13 +68,13 @@ void TouchChannel::handleSequence(int position)
             break;
     }
 
-    triggerNote(currNoteIndex, currOctave, PITCH_BEND); // always handle pitch bend value
+    triggerNote(currNoteIndex, currOctave, BEND_PITCH); // always handle pitch bend value
 }
 
 void TouchChannel::clearEventSequence()
 {
     // deactivate all events in list
-    for (int i = 0; i < PPQN * MAX_SEQ_STEPS; i++)
+    for (int i = 0; i < PPQN * MAX_SEQ_LENGTH; i++)
     {
         clearEvent(i);
     }
@@ -84,9 +84,9 @@ void TouchChannel::clearEventSequence()
 void TouchChannel::clearPitchBendSequence()
 {
     // deactivate all events in list
-    for (int i = 0; i < PPQN * MAX_SEQ_STEPS; i++)
+    for (int i = 0; i < PPQN * MAX_SEQ_LENGTH; i++)
     {
-        events[i].pitchBend = pbZero;
+        // events[i].pitchBend = pbZero;
     }
 };
 
@@ -110,7 +110,7 @@ void TouchChannel::clearEvent(int position)
     events[position].noteIndex = NULL_NOTE_INDEX;
     events[position].active = false;
     events[position].gate = LOW;
-    events[position].pitchBend = pbZero;
+    // events[position].pitchBend = pbZero;
 }
 
 void TouchChannel::createChordEvent(int position, uint8_t notes)

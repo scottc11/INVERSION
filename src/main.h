@@ -2,13 +2,13 @@
 #define __MAIN_H
 
 #include <mbed.h>
-#include <arm_math.h> // ARM DSP functions
+// #include <arm_math.h> // ARM DSP functions
 
 #define PPQN                 96
 
 #define MIDI_BAUD            31250
-#define MIDI_TX              PA_2
-#define MIDI_RX              PA_3
+#define MIDI_TX              PA_2 // not up to date
+#define MIDI_RX              PA_3 // not up to date
 
 #define I2C3_SDA             PC_9
 #define I2C3_SCL             PA_8
@@ -22,7 +22,7 @@
 #define TEMPO_LED            PA_1
 #define TEMPO_POT            PA_2
 #define EXT_CLOCK_INPUT      PA_3
-#define INT_CLOCK_OUTPUT     PB_10
+#define INT_CLOCK_OUTPUT     PB_2
 
 #define ADC_A                PA_6
 #define ADC_B                PA_7
@@ -34,7 +34,7 @@
 #define PB_ADC_C             PB_0
 #define PB_ADC_D             PB_1
 
-#define GLOBAL_GATE_OUT      PB_2
+#define GLOBAL_GATE_OUT      PB_10
 
 #define GATE_OUT_A           PC_2
 #define GATE_OUT_B           PC_3
@@ -45,14 +45,13 @@
 #define TOUCH_INT_B          PC_0
 #define TOUCH_INT_C          PC_15
 #define TOUCH_INT_D          PC_14
-#define TOUCH_INT_CTRL_1     PC_13
-#define TOUCH_INT_CTRL_2     PB_7
-#define TOUCH_INT_OCT_AB     PB_6
-#define TOUCH_INT_OCT_CD     PB_5
 
 #define DEGREES_INT          PB_4
 
-#define REC_LED              PA_15
+#define CTRL_INT             PB_5
+
+#define REC_LED              PC_13
+#define FREEZE_LED           PB_7
 
 #define DAC1_CS              PB_12
 #define DAC2_CS              PC_8
@@ -61,7 +60,9 @@
 #define CAP1208_ADDR             0x50 // 0010100  via mux
 #define CAP1208_CTRL_ADDR        0x50 // 0010100
 
+#define MCP23008_IO_ADDR         0x22
 #define MCP23017_DEGREES_ADDR    0x20 // 0100000
+#define MCP23017_CTRL_ADDR       0x24 // 0100100
 
 #define IO_INT_PIN_A             PA_12
 #define IO_INT_PIN_B             PA_11
@@ -77,11 +78,12 @@
 // DEFAULT INITIALIZATION VALUES
 #define DEGREE_COUNT                   8
 #define OCTAVE_COUNT                   4
-#define DEFAULT_CHANNEL_LOOP_STEPS     8
 #define EVENT_END_BUFFER               4
 #define CV_QUANT_BUFFER                1000
 #define SLEW_CV_BUFFER                 1000
-#define MAX_SEQ_STEPS                 32
+
+#define DEFAULT_SEQ_LENGTH     8
+#define MAX_SEQ_LENGTH         32
 
 #define DEFAULT_VOLTAGE_ADJMNT      200
 #define MAX_CALIB_ATTEMPTS          20
@@ -132,16 +134,6 @@ const int DAC_NOTE_MAP[8][3] = {
   { 13160, 14256, 15291 }
 };
 
-// const int DAC_VOLTAGE_VALUES[59] = {
-// // A     A#     B      C      C#     D      D#     E      F      F#     G      G#
-//   1097,  2193,  3290,  4387,  5461,  6553,  7646,  8738,  9830,  10922, 12015, 13160,
-//   14256, 15353, 16450, 17546, 18643, 19739, 20836, 21933, 23029, 24126, 25223, 26319,
-//   27416, 28513, 29609, 30706, 31802, 32899, 33996, 35092, 36189, 37286, 38382, 39479, 
-//   40576, 41672, 42769, 43865, 44962, 46059, 47155, 48252, 49349, 50445, 51542, 52639, 
-//   53735, 54832, 55928, 57025, 58122, 59218, 60315, 61412, 62508, 63605, 64702
-// //                             END
-// };
-
 const int MIDI_NOTE_MAP[8][3] = {
   { 11, 12, 13 },
   { 13, 14, 15 },
@@ -153,13 +145,16 @@ const int MIDI_NOTE_MAP[8][3] = {
   { 23, 24, 25 },
 };
 
-// const int DAC_OCTAVE_MAP[4] = {0, 13107, 26214, 39321 };
-const int DAC_OCTAVE_MAP[4] = { 0, 8, 16, 24 };
 const int MIDI_OCTAVE_MAP[4] = { 36, 48, 60, 72 };
 
-#define CALIBRATION_LENGTH   64
+#define DAC_1VO_ARR_SIZE   64
+#define BENDER_CALIBRATION_SIZE 2
+#define BENDER_MIN_CAL_INDEX DAC_1VO_ARR_SIZE
+#define BENDER_MAX_CAL_INDEX (DAC_1VO_ARR_SIZE + 1)
+#define CALIBRATION_ARR_SIZE (DAC_1VO_ARR_SIZE + BENDER_CALIBRATION_SIZE)
+#define NUM_FLASH_CHANNEL_BYTES (((CALIBRATION_ARR_SIZE * 4) * 16) / 8)  // number of bytes = CALIBRATION_ARR_SIZE * number of channels * 16 bits / 8 bits
 
-const int CALIBRATION_LED_MAP[CALIBRATION_LENGTH] = {
+const int CALIBRATION_LED_MAP[DAC_1VO_ARR_SIZE] = {
   0, 1, 1, 2, 3, 3, 4, 5, 5, 6, 6, 7,
   0, 1, 1, 2, 3, 3, 4, 5, 5, 6, 6, 7,
   0, 1, 1, 2, 3, 3, 4, 5, 5, 6, 6, 7,
@@ -168,7 +163,7 @@ const int CALIBRATION_LED_MAP[CALIBRATION_LENGTH] = {
   0, 1, 2, 4
 };
 
-const int DAC_VOLTAGE_VALUES[CALIBRATION_LENGTH] = {
+const int DAC_VOLTAGE_VALUES[DAC_1VO_ARR_SIZE] = {
 // A     A#     B      C      C#     D      D#     E      F      F#     G      G#
   5630,  6568,  7506,   8445,  9383,  10321, 11260, 12198, 13137, 14075, 15013, 15952,
   16890, 17828, 18767,  19705, 20643, 21582, 22520, 23458, 24397, 25335, 26274, 27212,

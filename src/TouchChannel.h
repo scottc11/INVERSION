@@ -2,27 +2,31 @@
 #define __TOUCH_CHANNEL_H
 
 #include "main.h"
+#include "Bender.h"
 #include "Metronome.h"
 #include "Degrees.h"
 #include "DAC8554.h"
-#include "CAP1208.h"
+#include "MPR121.h"
 #include "TCA9544A.h"
 #include "SX1509.h"
-#include "AD525X.h"
 #include "MIDI.h"
 #include "QuantizeMethods.h"
 #include "BitwiseMethods.h"
 #include "ArrayMethods.h"
+#include "VoltPerOctave.h"
 
-#define CHANNEL_IO_MODE_PIN 5
-#define CHANNEL_IO_TOGGLE_PIN_1 6
-#define CHANNEL_IO_TOGGLE_PIN_2 7
+#define CHANNEL_IO_MODE_PIN 9
+#define CHANNEL_LED_MUX_SEL 8
+#define CHANNEL_MODE_LED 10
+#define CHANNEL_GATE_LED 11
 #define NULL_NOTE_INDEX 99  // used to identify a 'null' or 'deleted' sequence event
-#define PB_CALIBRATION_RANGE 64
-const int PB_RANGE_MAP[8] = { 1, 2, 3, 4, 5, 7, 10, 12 };
 
-static const int OCTAVE_LED_PINS[4] = { 0, 1, 2, 3 };                 // io pin map for octave LEDs
-static const int CHAN_LED_PINS[8] = { 15, 14, 13, 12, 11, 10, 9, 8 }; // io pin map for channel LEDs
+static const int OCTAVE_LED_PINS[4] = { 3, 2, 1, 0 };               // io pin map for octave LEDs
+static const int CHAN_LED_PINS[8] = { 15, 14, 13, 12, 7, 6, 5, 4 }; // io pin map for channel LEDs
+static const int CHAN_TOUCH_PADS[12] = { 7, 6, 5, 4, 3, 2, 1, 0, 3, 2, 1, 0 };
+
+static const int DAC_OCTAVE_MAP[4] = {0, 12, 24, 36};
+static const int DEGREE_INDEX_MAP[8] = {0, 2, 4, 6, 8, 10, 12, 14};
 
 typedef struct QuantDegree {
   int threshold;
@@ -36,7 +40,7 @@ typedef struct QuantOctave {
 
 typedef struct SequenceNode {
   uint8_t activeNotes; // byte for holding active/inactive notes for a chord
-  uint8_t noteIndex;   // note index between 0 and 7
+  uint8_t noteIndex;   // note index between 0 and 7 NOTE: you could tag on some extra data in the bottom most bits, like gate on / off for example
   uint16_t pitchBend;  // raw ADC value from pitch bend
   bool gate;           // set gate HIGH or LOW
   bool active;         // this will tell the loop whether to trigger an event or not
@@ -54,7 +58,7 @@ class TouchChannel {
       OFF,
       SUSTAIN,
       PREV,
-      PITCH_BEND
+      BEND_PITCH
     };
 
     enum LedColor {
@@ -74,11 +78,18 @@ class TouchChannel {
       DIM_HIGH = 6
     };
 
-    enum Mode {
+    enum ChannelMode {
       MONO = 0,
       MONO_LOOP = 1,
       QUANTIZE = 2,
       QUANTIZE_LOOP = 3,
+    };
+
+    enum BenderMode {
+      BEND_OFF = 0,
+      PITCH_BEND = 1,
+      RATCHET = 2,
+      RATCHET_PITCH_BEND = 3
     };
 
     enum UIMode { // not yet implemented
@@ -90,35 +101,31 @@ class TouchChannel {
     int channel;                    // 0 based index to represent channel
     bool isSelected;
     bool gateState;                 // the current state of the gate output pin
-    Mode mode;                      // which mode channel is currently in
-    Mode prevMode;                  // used for reverting to previous mode when toggling between UI modes
+    ChannelMode mode;               // which mode channel is currently in
+    ChannelMode prevMode;           // used for reverting to previous mode when toggling between UI modes
     UIMode uiMode;                  // for settings and alt LED uis
     DigitalOut gateOut;             // gate output pin
     DigitalOut *globalGateOut;      // 
     Timer *timer;                   // timer for handling duration based touch events
     Ticker *ticker;                 // for handling time based callbacks
     MIDI *midi;                     // pointer to mbed midi instance
-    CAP1208 *touch;                 // i2c touch IC
-    DAC8554 *dac;                   // pointer to 1vo DAC
-    DAC8554::Channels dacChannel;   // which dac to address
-    DAC8554 *pb_dac;                // pointer to Pitch Bends DAC
-    DAC8554::Channels pb_dac_chan;  // which dac to address
+    MPR121 *touchPads;
     SX1509 *io;                     // IO Expander
-    AD525X *digiPot;                // digipot for pitch bend calibration
-    AD525X::Channels digiPotChan;   // which channel to use for the digipot
     Degrees *degrees;
-    InterruptIn touchInterupt;
     InterruptIn ioInterupt;         // for SC1509 3-stage toggle switch + tactile mode button
     AnalogIn cvInput;               // CV input pin for quantizer mode
-    AnalogIn pbInput;               // CV input for Pitch Bend
 
     volatile bool tickerFlag;        // each time the clock gets ticked, this flag gets set to true - then false in polling loop
     volatile bool switchHasChanged;  // toggle switches interupt flag
     volatile bool touchDetected;
     volatile bool modeChangeDetected;
 
+    VoltPerOctave output1V;
+
+    Bender bender;
+
     // SEQUENCER variables
-    SequenceNode events[PPQN * MAX_SEQ_STEPS];
+    SequenceNode events[PPQN * MAX_SEQ_LENGTH];
     QuantizeMode timeQuantizationMode;
     int prevEventIndex; // index for disabling the last "triggered" event in the loop
     bool sequenceContainsEvents;
@@ -136,8 +143,6 @@ class TouchChannel {
     int loopMultiplier;        // number between 1 and 4 based on Octave Leds of channel
 
     // quantizer variables
-    bool quantizerHasBeenInitialized;
-    bool enableQuantizer;                 // by default set to true, only ever changes with a 'freeze' event
     int activeDegrees;                    // 8 bits to determine which scale degrees are presently active/inactive (active = 1, inactive= 0)
     int activeOctaves;                    // 4-bits to represent which octaves external CV will get mapped to (active = 1, inactive= 0)
     int numActiveDegrees;                 // number of degrees which are active (to quantize voltage input)
@@ -145,29 +150,6 @@ class TouchChannel {
     int activeDegreeLimit;                // the max number of degrees allowed to be enabled at one time.
     QuantDegree activeDegreeValues[8];    // array which holds noteIndex values and their associated DAC/1vo values
     QuantOctave activeOctaveValues[OCTAVE_COUNT];
-
-    // Pitch Bend
-    int currPitchBend;                       // 16 bit value (0..65,536)
-    int prevPitchBend;                       // 16 bit value (0..65,536)
-    int pbOffsetIndex = 4;                   // an index value which gets mapped to PB_RANGE_MAP
-    float pbOffsetRange;                     // must be a float!
-    float cvOffsetRange = 32767;             // +- 8.1v DAC range (must be a float!)
-    int pbNoteOffset;                        // the amount of pitch bend to apply to the 1v/o DAC output. Can be positive/negative centered @ 0
-    int cvOffset;                            // the amount of Control Voltage to apply Pitch Bend DAC
-    int pbCalibration[PB_CALIBRATION_RANGE]; // an array which gets populated during initialization phase to determine a debounce value + zeroing
-    uint16_t pbZero;                         // the average ADC value when pitch bend is idle
-    uint16_t pbMax;                          // the minimum value the ADC can achieve when Pitch Bend fully pulled
-    uint16_t pbMin;                          // the maximum value the ADC can achieve when Pitch Bend fully pressed
-    int pbDebounce;                          // for debouncing the ADC when Pitch Bend is idle
-    bool pbEnabled;                          // for toggleing on/off the pitch bend effect to JUST the 1vo output
-    
-
-    float dacSemitone = 938.0;               // must be a float, as it gets divided down to a num between 0..1
-    uint16_t dacVoltageMap[32][3];
-    uint16_t dacVoltageValues[CALIBRATION_LENGTH];               // pre/post calibrated 16-bit DAC values
-
-    int redLedPins[8] = { 14, 12, 10, 8, 6, 4, 2, 0 };    // hardcoded values to be passed to the 16 chan LED driver
-    int greenLedPins[8] = { 15, 13, 11, 9, 7, 5, 3, 1 };  // hardcoded values to be passed to the 16 chan LED driver
     
     uint16_t ledStates;                   // 16 bits to represent each bi-color led  | 0-Red | 0-Green | 1-Red | 1-Green | 2-Red | 2-Green | etc...
     
@@ -193,72 +175,65 @@ class TouchChannel {
         Ticker *ticker_ptr,
         DigitalOut *globalGateOut_ptr,
         PinName gateOutPin,
-        PinName tchIntPin,
         PinName ioIntPin,
         PinName cvInputPin,
         PinName pbInputPin,
-        CAP1208 *touch_ptr,
+        MPR121 *touch_ptr,
         SX1509 *io_ptr,
         Degrees *degrees_ptr,
         MIDI *midi_p,
         DAC8554 *dac_ptr,
         DAC8554::Channels _dacChannel,
         DAC8554 *pb_dac_ptr,
-        DAC8554::Channels pb_dac_channel,
-        AD525X *digiPot_ptr,
-        AD525X::Channels _digiPotChannel) : gateOut(gateOutPin), touchInterupt(tchIntPin, PullUp), ioInterupt(ioIntPin, PullUp), cvInput(cvInputPin), pbInput(pbInputPin)
+        DAC8554::Channels pb_dac_channel
+        ) : gateOut(gateOutPin), ioInterupt(ioIntPin, PullUp), cvInput(cvInputPin), bender(pb_dac_ptr, pb_dac_channel, pbInputPin)
     {
       globalGateOut = globalGateOut_ptr;
       timer = timer_ptr;
       ticker = ticker_ptr;
-      touch = touch_ptr;
+      touchPads = touch_ptr;
       io = io_ptr;
       degrees = degrees_ptr;
-      dac = dac_ptr;
-      dacChannel = _dacChannel;
-      pb_dac = pb_dac_ptr;
-      pb_dac_chan = pb_dac_channel;
-      digiPot = digiPot_ptr;
-      digiPotChan = _digiPotChannel;
+      output1V.dac = dac_ptr;
+      output1V.dacChannel = _dacChannel;
       midi = midi_p;
-      touchInterupt.fall(callback(this, &TouchChannel::touchInteruptFn));
       ioInterupt.fall(callback(this, &TouchChannel::ioInteruptFn));
       channel = _channel;
     };
 
     void init();
     void poll();
-    void touchInteruptFn() { touchDetected = true; }
+    void onTouch(uint8_t pad);
+    void onRelease(uint8_t pad);
+
     void ioInteruptFn() { modeChangeDetected = true; }
 
     void initIOExpander();
+    void setLEDMux(LedState state);
     void setLed(int index, LedState state, bool settingUILed=false);
     void setOctaveLed(int octave, LedState state, bool settingUILed=false);
+    void setModeLed(LedState state);
+    void setGateLed(LedState state);
     void setAllLeds(int state);
     void updateOctaveLeds(int octave);
     void updateLoopMultiplierLeds();
-    void updateActiveDegreeLeds();
     void updateLeds(uint8_t touched);  // could be obsolete
-    
-    // Pitch Bend
-    void calibratePitchBend();
-    void updatePitchBendDAC(uint16_t value);
-    void handlePitchBend();
-    void setPitchBendRange(int touchedIndex);
-    void setPitchBendOffset(uint16_t pitchBend);
 
-    void handleTouchInterupt();
-    void handleDegreeChange();
+    // BENDER
+    void benderActiveCallback(uint16_t value);
+    void benderIdleCallback();
+    int setBenderMode(int targetMode = 0);
+
+    void updateDegrees();
     void handleIOInterupt();
-    void setMode(Mode targetMode);
-    
+    void setMode(ChannelMode targetMode);
+
     void tickClock();
     void stepClock();
     void resetClock();
     
     int quantizePosition(int position);
     int calculateMIDINoteValue(int index, int octave);
-    int calculateDACNoteValue(int index, int octave);
 
     void setOctave(int value);
     void triggerNote(int index, int octave, NoteState state, bool blinkLED=false);
@@ -266,7 +241,6 @@ class TouchChannel {
     void setGlobalGate(bool state);
     void freeze(bool enable);
     void reset();
-    void generateDacVoltageMap();
 
     // UI METHODS
     void enableUIMode(UIMode target);
@@ -293,9 +267,10 @@ class TouchChannel {
     void handleSequence(int position);
 
     // QUANTIZER METHODS
-    void initQuantizerMode();
-    void handleCVInput(int value);
+    void initQuantizer();
+    void handleCVInput();
     void setActiveDegrees(int degrees);
+    void updateActiveDegreeLeds(uint8_t degrees);
     void setActiveDegreeLimit(int value);
     void setActiveOctaves(int octave);
     

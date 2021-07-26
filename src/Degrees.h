@@ -9,12 +9,13 @@ class Degrees {
 
     MCP23017 * io;
     DigitalIn ioInterupt;
+    Callback<void()> onChangeCallback;
     bool interuptDetected;
-    bool hasChanged[4];
+    bool hasChanged;
     uint16_t currState;
     uint16_t prevState;
 
-    int switchStates[8];
+    int switchStates[8]; // holds the current position of all 8 toggle switchs in the form of a 0, 1, or 2
 
     Degrees(PinName ioIntPin, MCP23017 *io_ptr) : ioInterupt(ioIntPin, PullUp) {
       io = io_ptr;
@@ -41,6 +42,11 @@ class Degrees {
       interuptDetected = true;
     };
 
+    void attachCallback(Callback<void()> func)
+    {
+      onChangeCallback = func;
+    }
+
     void poll() {
       if (!ioInterupt.read()) {     // update switch states
         wait_us(5);
@@ -52,12 +58,6 @@ class Degrees {
     void updateDegreeStates() {
       currState = io->digitalReadAB();
       if (currState != prevState) {
-        // for notifiying external channels there was a change
-        hasChanged[0] = true;
-        hasChanged[1] = true;
-        hasChanged[2] = true;
-        hasChanged[3] = true;
-
         int switchIndex = 0;
         for (int i = 0; i < 16; i++) {   // iterate over all 16 bits
           if (i % 2 == 0) {             // only checking bits in pairs
@@ -79,6 +79,9 @@ class Degrees {
           }
         }
         prevState = currState;
+        if (onChangeCallback) {
+          onChangeCallback();
+        }
       }
     };
 

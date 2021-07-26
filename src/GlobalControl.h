@@ -3,77 +3,62 @@
 
 #include "main.h"
 #include "BitwiseMethods.h"
-#include "CAP1208.h"
 #include "TouchChannel.h"
+#include "Degrees.h"
 #include "VCOCalibrator.h"
 #include "DualDigitDisplay.h"
 #include "Metronome.h"
-
+#include "MCP23017.h"
+#include "MCP23008.h"
 
 class GlobalControl {
 public:
-  enum Mode {
+  enum Mode
+  {
     DEFAULT,
-    CALIBRATING
+    CALIBRATING_1VO,
+    CALIBRATING_BENDER
   };
 
+  MCP23017 io;
+  uint16_t currIOState;
+  uint16_t prevIOState;
+  MCP23008 leds;
+  uint8_t ledStates = 0x00;          // || chan D || chan C || chan B || chan A ||
   Metronome *metronome;
+  Degrees *degrees;
   VCOCalibrator calibrator;
-  CAP1208 *touchCtrl1;
-  CAP1208 *touchCtrl2;
-  CAP1208 *touchOctAB;
-  CAP1208 *touchOctCD;
   TouchChannel *channels[4];
   Timer timer;
-  DigitalOut rec_led;
-  InterruptIn ctrl1Interupt;
-  InterruptIn ctrl2Interupt;
-  InterruptIn octaveInteruptAB;
-  InterruptIn octaveInteruptCD;
+  InterruptIn ctrlInterupt;
+  DigitalOut freezeLED;
+  DigitalOut recLED;
   uint32_t flashAddr = 0x08060000;   // should be 'sector 7', program memory address starts @ 0x08000000
 
   Mode mode;
   bool recordEnabled;                // used for toggling REC led among other things...
   int selectedChannel;
-  int currTouchedChannel;            // ???
-  uint16_t currTouched;              // variable for holding the currently touched buttons. It is a combination of two 8-bit values from two CAP1208 ICs
-  uint16_t prevTouched;              // variable for holding previously touched buttons
-  uint16_t currOctavesTouched;
-  uint16_t prevOctavesTouched;
-  volatile bool touchDetected;
-  bool octaveTouchDetected;
+  bool buttonPressed;
+  uint16_t buttonsState;
 
   GlobalControl(
       Metronome *metronome_ptr,
-      CAP1208 * ctrl1_ptr,
-      CAP1208 *ctrl2_ptr,
-      CAP1208 *tchAB_ptr,
-      CAP1208 *tchCD_ptr,
-      PinName ctrl1_int,
-      PinName ctrl2_int,
-      PinName oct_int_ab,
-      PinName oct_int_cd,
-      PinName recLedPin,
+      Degrees *degrees_ptr,
+      I2C *i2c_ptr,
       TouchChannel *chanA_ptr,
       TouchChannel *chanB_ptr,
       TouchChannel *chanC_ptr,
-      TouchChannel *chanD_ptr) : ctrl1Interupt(ctrl1_int, PullUp), ctrl2Interupt(ctrl2_int, PullUp), octaveInteruptAB(oct_int_ab), octaveInteruptCD(oct_int_cd), rec_led(recLedPin)
+      TouchChannel *chanD_ptr
+      ) : io(i2c_ptr, MCP23017_CTRL_ADDR), leds(i2c_ptr, MCP23008_IO_ADDR), ctrlInterupt(CTRL_INT), freezeLED(FREEZE_LED), recLED(REC_LED)
   {
     mode = Mode::DEFAULT;
     metronome = metronome_ptr;
-    touchCtrl1 = ctrl1_ptr;
-    touchCtrl2 = ctrl2_ptr;
-    touchOctAB = tchAB_ptr;
-    touchOctCD = tchCD_ptr;
+    degrees = degrees_ptr;
     channels[0] = chanA_ptr;
     channels[1] = chanB_ptr;
     channels[2] = chanC_ptr;
     channels[3] = chanD_ptr;
-    rec_led.write(0);
-    ctrl1Interupt.fall(callback(this, &GlobalControl::handleTouchInterupt));
-    ctrl2Interupt.fall(callback(this, &GlobalControl::handleTouchInterupt));
-    octaveInteruptAB.fall(callback(this, &GlobalControl::handleOctaveInterupt));
-    octaveInteruptCD.fall(callback(this, &GlobalControl::handleOctaveInterupt));
+    ctrlInterupt.fall(callback(this, &GlobalControl::handleControlInterupt));
   }
 
   void init();
@@ -83,65 +68,68 @@ public:
   void calibrateChannel(int chan);
   void saveCalibrationToFlash(bool reset=false);
   void loadCalibrationDataFromFlash();
+  void calibrateBenders();
 
+  void handleDegreeChange();
   void handleFreeze(bool enable);
   void handleClockReset();
   void enableLoopLengthUI();
-  void enablePitchBendRangeUI();
-  void disablePitchBendRangeUI();
 
-  void handleTouch(int pad);
-  void handleRelease(int pad);
+  void handleStateChange(int currState, int prevState);
+  void handleButtonPress(int pad);
+  void handleButtonRelease(int pad);
   bool handleGesture();
-  void handleTouchEvent();
+  void pollButtons();
   void handleOctaveTouched();
   void setChannelOctave(int pad);
   void setChannelLoopMultiplier(int pad);
-
+  void setChannelBenderMode();
+  void setChannelBenderMode(int chan);
   void tickChannels();
 
-  void handleTouchInterupt() {
-    touchDetected = true;
-  }
-
-  void handleOctaveInterupt() {
-    octaveTouchDetected = true;
+  void handleControlInterupt() {
+    buttonPressed = true;
   }
 
 private:
   enum PadNames
   {                  // integers correlate to 8-bit index position
-    LOOP_LENGTH = 0, // 0b00000001
-    PB_RANGE = 1,
-    CALIBRATE = 3,   // 0b00001000
-    RECORD = 5,      // 0b00100000
-    CLEAR_SEQ = 6,   // 0b01000000
-    CLEAR_BEND = 7,  // 0b10000000
-    RESET = 9,       
-    FREEZE = 10,     
-    CTRL_ALL = 11,   // 0b00001000
-    CTRL_A = 12,     // 0b00010000
-    CTRL_B = 13,     // 0b00100000
-    CTRL_C = 14,     // 0b01000000
-    CTRL_D = 15,     // 0b10000000
+    SEQ_LENGTH = 0x0040,
+    PB_RANGE =   0x0020,
+    RECORD =     0x1000,
+    CLEAR_SEQ =  0x4000,
+    CLEAR_BEND = 0x2000,
+    BEND_MODE =  0x8000,
+    RESET =      0x0100,
+    FREEZE =     0x0400,
+    QUANTIZE_SEQ = 0x0200,
+    QUANTIZE_AMOUNT = 0x0010,
+    SHIFT =      0x0080,
+    CTRL_A =     0x0008,
+    CTRL_B =     0x0004,
+    CTRL_C =     0x0002,
+    CTRL_D =     0x0001
   };
 
   enum Gestures
   {
-    RESET_LOOP_A = 0b10100000,            // CHANNEL + RESET
-    RESET_LOOP_B = 0b10010000,            // CHANNEL + RESET
-    RESET_LOOP_C = 0b10001000,            // CHANNEL + RESET
-    RESET_LOOP_D = 0b10000100,            // CHANNEL + RESET
-    CLEAR_CH_A_LOOP   = 0b0001000001000000, // CLEAR_SEQ + CHANNEL
-    CLEAR_CH_B_LOOP   = 0b0010000001000000,
-    CLEAR_CH_C_LOOP   = 0b0100000001000000,
-    CLEAR_CH_D_LOOP   = 0b1000000001000000,
-    CLEAR_CH_A_PB     = 0b0001000010000000, // CLEAR_BEND + CHANNEL
-    CLEAR_CH_B_PB     = 0b0010000010000000,
-    CLEAR_CH_C_PB     = 0b0100000010000000,
-    CLEAR_CH_D_PB     = 0b1000000010000000,
-    CLEAR_SEQ_ALL     = 0b0000100001000000,
-    RESET_CALIBRATION = 0b0000100000001000  // CTRL_ALL + CALIBRATE
+    CALIBRATE_A = 0x0088, // SHIFT + CTRL_A
+    CALIBRATE_B = 0x0084,
+    CALIBRATE_C = 0x0082,
+    CALIBRATE_D = 0x0081,
+    CALIBRATE_BENDER = 0x00A0,
+    BEND_MODE_A = 0x8008,
+    BEND_MODE_B = 0x8004,
+    BEND_MODE_C = 0x8002,
+    BEND_MODE_D = 0x8001,
+    CLEAR_SEQ_A = 0x4008,
+    CLEAR_SEQ_B = 0x4004,
+    CLEAR_SEQ_C = 0x4002,
+    CLEAR_SEQ_D = 0x4001,
+    CLEAR_BEND_SEQ_A = 0x2008,
+    CLEAR_BEND_SEQ_B = 0x2004,
+    CLEAR_BEND_SEQ_C = 0x2002,
+    CLEAR_BEND_SEQ_D = 0x2001
   };
 };
 

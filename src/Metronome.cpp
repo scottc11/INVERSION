@@ -17,7 +17,7 @@ void Metronome::pollTempoPot() {
   if (newTempoPotValue != oldTempoPotValue) {
     if (newTempoPotValue > oldTempoPotValue + debounce || newTempoPotValue < oldTempoPotValue - debounce)
     {
-      int index = newTempoPotValue / (65535 / BPM_RANGE);
+      int index = newTempoPotValue / (65535 / (BPM_MAX - BPM_MIN));
       this->updateTempo(usTempoMap[index]);
       oldTempoPotValue = newTempoPotValue;
     }
@@ -25,7 +25,7 @@ void Metronome::pollTempoPot() {
 }
 
 void Metronome::updateTempo(int us) {
-  tickInterval = us;
+  tickInterval = us / 2; // tempo value is currently based on quarter notes, so divide by two here to get 8th notes for better clock output speeds
   ticker.attach_us(callback(this, &Metronome::tick), tickInterval);
 }
 
@@ -60,6 +60,14 @@ void Metronome::step() {
     currStep = 1;
     position = 1;
   }
+}
+
+void Metronome::start() {
+  ticker.attach_us(callback(this, &Metronome::tick), tickInterval);
+}
+
+void Metronome::stop() {
+  ticker.detach();
 }
 
 void Metronome::attachTickCallback(Callback<void()> func) {

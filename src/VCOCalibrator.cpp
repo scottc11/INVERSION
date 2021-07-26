@@ -5,157 +5,138 @@ void VCOCalibrator::setChannel(TouchChannel *chan)
     channel = chan;
 }
 
-void VCOCalibrator::enableCalibrationMode()
+void VCOCalibrator::startCalibration()
 {
-    calibrationFinished = false;
-    calibrationAttemps = 0;
-    readyToCalibrate = false;
-    pitchIndex = 0;
-    initialPitchIndex = 0;
     freqSampleIndex = 0;
     numSamplesTaken = 0;
-    avgFreq = 0;
-    prevAvgFreq = 0;
-    calLedIndex = 0;
-    adjustment = DEFAULT_VOLTAGE_ADJMNT;
+    sampleVCO = true;
 
-    channel->setAllLeds(TouchChannel::HIGH);
-    wait_us(5000);
-    channel->setAllLeds(TouchChannel::LOW);
-    wait_us(5000);
-    channel->setAllLeds(TouchChannel::HIGH);
-    wait_us(5000);
-    channel->setAllLeds(TouchChannel::LOW);
-    wait_us(5000);
-    channel->setLed(0, TouchChannel::HIGH);
-
-    for (int i = 0; i < CALIBRATION_LENGTH; i++) {  // reset values to default
-        channel->dacVoltageValues[i] = DAC_VOLTAGE_VALUES[i];
-    }
-
-    channel->setOctaveLed(0, TouchChannel::LOW);
-    channel->dac->write(channel->dacChannel, channel->dacVoltageValues[0]); // start at bottom most note.
-
-    ticker.attach_us(callback(this, &VCOCalibrator::sampleVCOFrequency), VCO_SAMPLE_RATE_US);
+    channel->output1V.resetVoltageMap();
 }
 
-void VCOCalibrator::disableCalibrationMode()
+void VCOCalibrator::disableCalibration()
 {
-    ticker.detach();  // disable ticker
-    channel->setAllLeds(TouchChannel::HIGH);
-    wait_us(500000);
-    channel->setAllLeds(TouchChannel::LOW);
-    wait_us(500000);
-    channel->setAllLeds(TouchChannel::HIGH);
-    wait_us(500000);
-    channel->setAllLeds(TouchChannel::LOW);
-
-    // deactivate calibration mode
-    pitchIndex = 0;            // ?
-    calibrationFinished = true;
-    channel->setMode(TouchChannel::MONO);
+    ticker.detach(); // disable ticker
 }
 
-void VCOCalibrator::calibrateVCO()
+bool VCOCalibrator::bruteForceCalibration()
 {
-    // wait till MAX_FREQ_SAMPLES has been obtained
-    if (readyToCalibrate)
+    float avgFreq = 0;
+    float prevAvgFreq = 0;
+    float tolerance = 0.1;   // tolerable frequency tuning difference
+    bool overshoot = false;  // 
+
+    for (int i = 0; i < DAC_1VO_ARR_SIZE; i++)
     {
-
-        avgFreq = this->calculateAverageFreq(); // determine the average frequency of all frewuency samples
-
+        // initialize
+        bool calibrating = true;       // while loop flag
+        int calibrationAttemps = 0;    // for limiting the number of calibration attempts
+        int dacAdjustment = DEFAULT_VOLTAGE_ADJMNT;
+        
         // handle first iteration of calibrating by finding the frequency in PITCH_FREQ array closest to the currently sampled frequency
-        if (prevAvgFreq == 0 && avgFreq != 0)
-        {
+        if (i == 0) {
+            // sample VCO
+            channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[i]);
+            wait_us(500); // settle DAC
+            sampleVCO = true;
+            ticker.attach_us(callback(this, &VCOCalibrator::sampleVCOFrequency), VCO_SAMPLE_RATE_US);
+            while (sampleVCO);
+            ticker.detach();
+
+            avgFreq = calculateAverageFreq();
             initialPitchIndex = arr_find_closest_float(const_cast<float *>(PITCH_FREQ), NUM_PITCH_FREQENCIES, avgFreq);
-            pitchIndex = initialPitchIndex;
-        }
-
-        float threshold = 0.1;
-
-        int dacIndex = pitchIndex - initialPitchIndex;
-
-        // if avgFreq is close enough to desired freq
-        if ((avgFreq <= PITCH_FREQ[pitchIndex] + threshold && avgFreq >= PITCH_FREQ[pitchIndex] - threshold) || calibrationAttemps > MAX_CALIB_ATTEMPTS)
-        {
-
-            // move to next pitch to be calibrated
-            if (pitchIndex < CALIBRATION_LENGTH + initialPitchIndex)
-            {
-                switch (dacIndex)
-                {
-                case 12:
-                    channel->setOctaveLed(0, TouchChannel::HIGH);
-                    break;
-                case 24:
-                    channel->setOctaveLed(1, TouchChannel::HIGH);
-                    break;
-                case 36:
-                    channel->setOctaveLed(2, TouchChannel::HIGH);
-                    break;
-                case 48:
-                    channel->setOctaveLed(3, TouchChannel::HIGH);
-                    break;
-                case 60:
-                    channel->setOctaveLed(0, TouchChannel::BLINK_ON);
-                    channel->setOctaveLed(1, TouchChannel::BLINK_ON);
-                    channel->setOctaveLed(2, TouchChannel::BLINK_ON);
-                    channel->setOctaveLed(3, TouchChannel::BLINK_ON);
-                    break;
-                default:
-                    break;
-                }
-                channel->setLed(CALIBRATION_LED_MAP[dacIndex == 0 ? 0 : dacIndex - 1], TouchChannel::LOW);
-                adjustment = DEFAULT_VOLTAGE_ADJMNT; // reset to default
-                calibrationAttemps = 0;
-                pitchIndex += 1; // increase note index by 1
-
-                channel->setLed(CALIBRATION_LED_MAP[dacIndex], TouchChannel::HIGH);
-            }
-
-            else // finished calibrating
-            {
-                channel->generateDacVoltageMap(); // set dac map to use new calibrated values
-                this->disableCalibrationMode();
-            }
-        }
-        else     // avgFreq not close enough
-        {
-            // every time avgFreq over/undershoots the desired frequency, decrement the 'adjustment' value by half.
-
-            uint16_t currVal = channel->dacVoltageValues[dacIndex]; // pre-calibrated value to be adjusted
-
-            if (avgFreq > PITCH_FREQ[pitchIndex] + threshold)
-            { // if overshoot
-                if (prevAvgFreq < PITCH_FREQ[pitchIndex] - threshold)
-                {
-                    overshoot = true;
-                    adjustment = (adjustment / 2) + 1; // + 1 so it never becomes zero
-                }
-                currVal -= adjustment;
-            }
-
-            else if (avgFreq < PITCH_FREQ[pitchIndex] - threshold)
-            { // if undershoot
-                if (prevAvgFreq > PITCH_FREQ[pitchIndex] + threshold)
-                {
-                    overshoot = false;
-                    adjustment = (adjustment / 2) + 1; // so it never becomes zero
-                }
-                currVal += adjustment;
-            }
-
-            prevAvgFreq = avgFreq;
-            channel->dacVoltageValues[dacIndex] = currVal > 65000 ? 65000 : currVal; // replace current DAC value with adjusted value (NOTE: must cap value or else it will roll over to zero)
         }
         
-        // output new voltage and reset calibration process
-        channel->dac->write(channel->dacChannel, channel->dacVoltageValues[dacIndex]);
-        wait_us(10000);           // give time for new voltage to 'settle'
-        freqSampleIndex = 0;
-        readyToCalibrate = false; // flag telling interupt routine to start sampling again
-        calibrationAttemps += 1;
+        while (calibrating)
+        {
+            // sample VCO
+            channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[i]);
+            wait_us(500); // settle DAC
+            sampleVCO = true;
+            ticker.attach_us(callback(this, &VCOCalibrator::sampleVCOFrequency), VCO_SAMPLE_RATE_US);
+            while (sampleVCO);
+            ticker.detach();
+            
+            // pull target frequency from pre-set frequency values
+            float targetFreq = PITCH_FREQ[initialPitchIndex + i];
+
+            avgFreq = calculateAverageFreq();
+
+            // if avgFreq is close enough to targetFreq, or max cal attempts has been reached, break out of while loop and move to next 'note'
+            if ((avgFreq <= targetFreq + tolerance && avgFreq >= targetFreq - tolerance) || calibrationAttemps > MAX_CALIB_ATTEMPTS)
+            {
+                calibrating = false;
+            }
+
+            // if avgFreq not close enough targetFreq
+            else
+            {
+
+                uint16_t currDacValue = channel->output1V.dacVoltageMap[i]; // pre-calibrated value to be adjusted
+
+                // every time avgFreq over/undershoots the desired frequency, decrement the 'dacAdjustment' value by half.
+                if (avgFreq > targetFreq + tolerance) // overshot target freq
+                { 
+                    if (prevAvgFreq < targetFreq - tolerance)
+                    {
+                        overshoot = true;
+                        dacAdjustment = (dacAdjustment / 2) + 1; // + 1 so it never becomes zero
+                    }
+                    currDacValue -= dacAdjustment;
+                }
+
+                else if (avgFreq < targetFreq - tolerance) // undershot target freq
+                {
+                    if (prevAvgFreq > targetFreq + tolerance)
+                    {
+                        overshoot = false;
+                        dacAdjustment = (dacAdjustment / 2) + 1; // so it never becomes zero
+                    }
+                    currDacValue += dacAdjustment;
+                }
+
+                // replace current DAC value with adjusted value (NOTE: must cap value or else it will roll over to zero)
+                channel->output1V.dacVoltageMap[i] = currDacValue > 65535 ? 65535 : currDacValue;
+                prevAvgFreq = avgFreq;
+                calibrationAttemps += 1;
+            }
+        }
     }
+
+    // finished calibrating
+    return true;
+}
+
+bool VCOCalibrator::interpolationCalibration()
+{
+    int dacIndex = 0;
+
+    for (int i = 0; i < NUM_INTERPOLATION; i++)
+    {
+        dacIndex = DAC_SAMPLE_LIST[i];
+        channel->output1V.dac->write(channel->output1V.dacChannel, channel->output1V.dacVoltageMap[dacIndex]); // start at bottom most voltage.
+        wait_us(500);  // settling time
+        sampleVCO = true;
+        ticker.attach_us(callback(this, &VCOCalibrator::sampleVCOFrequency), VCO_SAMPLE_RATE_US);
+        while (sampleVCO);
+        ticker.detach();
+        samples[i].first =  calculateAverageFreq();
+        samples[i].second = channel->output1V.dacVoltageMap[dacIndex];
+    }
+    
+    
+    // Find the frequency in PITCH_FREQ array closest to the currently sampled frequency
+    // use this index value later when calculating predictions
+    initialPitchIndex = arr_find_closest_float(const_cast<float *>(PITCH_FREQ), NUM_PITCH_FREQENCIES, samples[0].first);
+    if (initialPitchIndex + DAC_1VO_ARR_SIZE > NUM_PITCH_FREQENCIES) // must be less or equal to NUM_PITCH_FREQENCIES
+    {
+        initialPitchIndex = 0; // start at bottom 🤷‍♂️
+    }
+    
+    // now run the code
+    this->generateResults();
+    this->disableCalibration();
+    return true;
 }
 
 
@@ -180,10 +161,9 @@ float VCOCalibrator::calculateAverageFreq()
 */
 void VCOCalibrator::sampleVCOFrequency()
 {
-    if (!readyToCalibrate)
+    if (sampleVCO)
     {
-        currVCOInputVal = channel->cvInput.read_u16();  // sample the ADC
-
+        currVCOInputVal = channel->cvInput.read_u16(); // sample the ADC
         // NEGATIVE SLOPE
         if (currVCOInputVal >= (VCO_ZERO_CROSSING + VCO_ZERO_CROSS_THRESHOLD) && prevVCOInputVal < (VCO_ZERO_CROSSING + VCO_ZERO_CROSS_THRESHOLD) && slopeIsPositive)
         {
@@ -192,24 +172,94 @@ void VCOCalibrator::sampleVCOFrequency()
         // POSITIVE SLOPE
         else if (currVCOInputVal <= (VCO_ZERO_CROSSING - VCO_ZERO_CROSS_THRESHOLD) && prevVCOInputVal > (VCO_ZERO_CROSSING - VCO_ZERO_CROSS_THRESHOLD) && !slopeIsPositive)
         {
-            float vcoPeriod = numSamplesTaken;             // how many samples have occurred between positive zero crossings
-            vcoFrequency = 8000.0 / vcoPeriod;             // sample rate divided by period of input signal
-            freqSamples[freqSampleIndex] = vcoFrequency;   // store sample in array
-            numSamplesTaken = 0;                           // reset sample count to zero for the next sampling routine
+            float vcoPeriod = numSamplesTaken;           // how many samples have occurred between positive zero crossings
+            vcoFrequency = 8000.f / vcoPeriod;           // sample rate divided by period of input signal
+            freqSamples[freqSampleIndex] = vcoFrequency; // store sample in array
+            numSamplesTaken = 0;                         // reset sample count to zero for the next sampling routine
 
-            if (freqSampleIndex < MAX_FREQ_SAMPLES)
+            if (freqSampleIndex < MAX_FREQ_SAMPLES - 1)
             {
                 freqSampleIndex += 1;
             }
             else
             {
-                readyToCalibrate = true;          // set flag to enable calibrateVCO() in main() loop
-                freqSampleIndex = 0;              // reset sample index
+                freqSampleIndex = 0;
+                sampleVCO = false;
             }
             slopeIsPositive = true;
         }
 
         prevVCOInputVal = currVCOInputVal;
         numSamplesTaken++;
+    }
+}
+
+void VCOCalibrator::generateResults() {
+
+    //The method of interpolation is considering y(x) = a + b*log(x)
+    // In order to find the coefficients (a,b) that can interpolate in the best way the data set
+    // we need to write a matrix equation in the form A*(a,b)'' = B
+
+    // aux1 and aux2 variables are used to write the coefficients of matrix A
+    float aux1 = 1;
+    for (int i = 0; i < NUM_INTERPOLATION; i++)
+    {
+        aux1 = aux1 * samples[i].first;
+    }
+    aux1 = log(aux1);
+
+    float aux2 = 0;
+    for (int i = 0; i < NUM_INTERPOLATION; i++)
+    {
+        aux2 = aux2 + log(samples[i].first) * log(samples[i].first);
+    }
+
+    // we define the coeffcients of matrix A
+    float A[2][2];
+
+    A[0][0] = NUM_INTERPOLATION;
+    A[0][1] = aux1;
+    A[1][0] = aux1;
+    A[1][1] = aux2;
+
+    //aux3 and aux4 variables are used to write the coefficients of matrix B
+    float aux3 = 0;
+    for (int i = 0; i < NUM_INTERPOLATION; i++)
+    {
+        aux3 = aux3 + samples[i].second;
+    }
+
+    float aux4 = 0;
+    for (int i = 0; i < NUM_INTERPOLATION; i++)
+    {
+        aux4 = aux4 + samples[i].second * log(samples[i].first);
+    }
+
+    // we define the coefficients of matrix B
+    float B[2][1];
+    B[0][0] = aux3;
+    B[0][1] = aux4;
+
+    // in order to calculate the inverted of matrix A we need to calculate its determinant
+    float determinant;
+    determinant = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+
+    // calculate the inverted of matrix A
+    float A_inv[2][2];
+    A_inv[0][0] = A[1][1] / determinant;
+    A_inv[0][1] = -A[0][1] / determinant;
+    A_inv[1][0] = -A[1][0] / determinant;
+    A_inv[1][1] = A[0][0] / determinant;
+
+    // calculate the interpolation coefficients
+    float a, b;
+    a = A_inv[0][0] * B[0][0] + A_inv[0][1] * B[0][1];
+    b = A_inv[1][0] * B[0][0] + A_inv[1][1] * B[0][1];
+
+    // predict DAC values for each frequency in PITCH_FREQ
+    for (int i = 0; i < DAC_1VO_ARR_SIZE; i++)
+    {
+        float prediction = a + b * log(PITCH_FREQ[initialPitchIndex + i]);
+        channel->output1V.dacVoltageMap[i] = prediction;
     }
 }

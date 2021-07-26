@@ -34,7 +34,7 @@ git submodule update --remote
 - FREEZE should contrinue loop sequence, but only at a pre-set number of steps - creating loop "windows". In other words, freeze actually just cuts the current loop by certain divisions ie. 8 step loop cus down to 4, then 2, then 1 etc.
 
 ---
-# [mbed_app.json](https://os.mbed.com/docs/mbed-os/v5.11/reference/configuration.html)
+# [mbed_app.json](https://os.mbed.com/docs/mbed-os/v5.15/reference/configuration.html)
 
 This file is used to override the default MBED build configurations
 

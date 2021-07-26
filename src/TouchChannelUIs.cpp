@@ -94,7 +94,7 @@ void TouchChannel::handleLoopLengthUI()
 void TouchChannel::updatePitchBendRangeUI()
 {
     setAllLeds(LOW); // reset
-    for (int i = 0; i < pbOffsetIndex + 1; i++)
+    for (int i = 0; i < output1V.pbRangeIndex + 1; i++)
     {
         setLed(i, HIGH, true);
     }
