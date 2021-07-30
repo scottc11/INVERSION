@@ -112,7 +112,6 @@ class TouchChannel {
     MPR121 *touchPads;
     SX1509 *io;                     // IO Expander
     Degrees *degrees;
-    InterruptIn ioInterupt;         // for SC1509 3-stage toggle switch + tactile mode button
     AnalogIn cvInput;               // CV input pin for quantizer mode
 
     volatile bool tickerFlag;        // each time the clock gets ticked, this flag gets set to true - then false in polling loop
@@ -186,7 +185,7 @@ class TouchChannel {
         DAC8554::Channels _dacChannel,
         DAC8554 *pb_dac_ptr,
         DAC8554::Channels pb_dac_channel
-        ) : gateOut(gateOutPin), ioInterupt(ioIntPin, PullUp), cvInput(cvInputPin), bender(pb_dac_ptr, pb_dac_channel, pbInputPin)
+        ) : gateOut(gateOutPin), cvInput(cvInputPin), bender(pb_dac_ptr, pb_dac_channel, pbInputPin)
     {
       globalGateOut = globalGateOut_ptr;
       timer = timer_ptr;
@@ -197,7 +196,6 @@ class TouchChannel {
       output1V.dac = dac_ptr;
       output1V.dacChannel = _dacChannel;
       midi = midi_p;
-      ioInterupt.fall(callback(this, &TouchChannel::ioInteruptFn));
       channel = _channel;
     };
 
