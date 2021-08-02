@@ -38,3 +38,25 @@ void DegreeDisplay::stepSequenceLED(int chan, int currStep, int prevStep) {
     // set prevStep PWM back to Mid
     ledMatrix.setPWM(CHAN_DISPLAY_LED_MAP[chan][prevStep], OK_PWM_MID);
 }
+
+/**
+ * The Bender Calibration LED displau should start with the middle two rows barely illuminated, and then increase the brightness of
+ * the middle row + top / bottom rows as the Bender gets more and more calibrated.
+ * 
+ * Have the display flash when it is finished.
+*/ 
+void DegreeDisplay::benderCalibration() {
+    for (int chan = 0; chan < 4; chan++)
+    {
+        for (int i = 0; i < 16; i++)
+        {
+            if (i >= 0 && i < 4) {
+                ledMatrix.setPWM(CHAN_DISPLAY_LED_MAP[chan][i], OK_PWM_MID);
+            } else if (i > 11) {
+                ledMatrix.setPWM(CHAN_DISPLAY_LED_MAP[chan][i], OK_PWM_MID);
+            }
+        }
+        
+    }
+    
+}

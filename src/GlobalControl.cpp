@@ -169,12 +169,14 @@ void GlobalControl::handleButtonPress(int pad) {
     case Gestures::CALIBRATE_D:
       calibrateChannel(3);
       break;
-    case CALIBRATE_BENDER:
+    case Gestures::CALIBRATE_BENDER:
       if (this->mode == CALIBRATING_BENDER) {
         this->saveCalibrationToFlash();
+        display->clear();
         this->mode = DEFAULT;
       } else {
         this->mode = CALIBRATING_BENDER;
+        display->benderCalibration();
       }
       break;
     case BEND_MODE:

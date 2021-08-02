@@ -25,7 +25,7 @@ public:
     void clear();
     void setSequenceLEDs(int chan, int length, bool on);
     void stepSequenceLED(int chan, int currStep, int prevStep);
-
+    void benderCalibration();
 private:
     IS31FL3739 ledMatrix;
 };
