@@ -14,11 +14,12 @@
 #include "BitwiseMethods.h"
 #include "ArrayMethods.h"
 #include "VoltPerOctave.h"
+#include "DegreeDisplay.h"
 
 #define CHANNEL_IO_MODE_PIN 9
 #define CHANNEL_LED_MUX_SEL 8
-#define CHANNEL_MODE_LED 10
-#define CHANNEL_GATE_LED 11
+#define CHANNEL_MODE_LED 11
+#define CHANNEL_GATE_LED 10
 #define NULL_NOTE_INDEX 99  // used to identify a 'null' or 'deleted' sequence event
 
 static const int OCTAVE_LED_PINS[4] = { 3, 2, 1, 0 };               // io pin map for octave LEDs
@@ -111,6 +112,7 @@ class TouchChannel {
     MIDI *midi;                     // pointer to mbed midi instance
     MPR121 *touchPads;
     SX1509 *io;                     // IO Expander
+    DegreeDisplay *display;
     Degrees *degrees;
     AnalogIn cvInput;               // CV input pin for quantizer mode
 
@@ -120,7 +122,6 @@ class TouchChannel {
     volatile bool modeChangeDetected;
 
     VoltPerOctave output1V;
-
     Bender bender;
 
     // SEQUENCER variables
@@ -133,10 +134,10 @@ class TouchChannel {
     bool enableLoop = false;   // "Event Triggering Loop" -> This will prevent looped events from triggering if a new event is currently being created
     bool recordEnabled;        //
     int prevNodePosition;      // represents the last node in the sequence which got triggered (either HIGH or LOW)
-    volatile int numLoopSteps; // how many steps the sequence contains (before applying the multiplier)
-    volatile int currStep;     // the current 'step' of the loop (lowest value == 0)
-    volatile int currPosition; // the current position in the in the entire sequence (measured by PPQN)
-    volatile int currTick;     // the current PPQN position of the step (0..PPQN) (lowest value == 0)
+    int numLoopSteps; // how many steps the sequence contains (before applying the multiplier)
+    int currStep;     // the current 'step' of the loop (lowest value == 0)
+    int currPosition; // the current position in the in the entire sequence (measured by PPQN)
+    int currTick;     // the current PPQN position of the step (0..PPQN) (lowest value == 0)
     int totalPPQN;             // how many PPQN the sequence currently contains (equal to totalSteps * PPQN)
     int totalSteps;            // how many Steps the sequence contains (in total ie. numLoopSteps * loopMultiplier)
     int loopMultiplier;        // number between 1 and 4 based on Octave Leds of channel
@@ -179,19 +180,20 @@ class TouchChannel {
         PinName pbInputPin,
         MPR121 *touch_ptr,
         SX1509 *io_ptr,
-        Degrees *degrees_ptr,
+        DegreeDisplay *display_ptr,
+        Degrees * degrees_ptr,
         MIDI *midi_p,
         DAC8554 *dac_ptr,
         DAC8554::Channels _dacChannel,
         DAC8554 *pb_dac_ptr,
-        DAC8554::Channels pb_dac_channel
-        ) : gateOut(gateOutPin), cvInput(cvInputPin), bender(pb_dac_ptr, pb_dac_channel, pbInputPin)
+        DAC8554::Channels pb_dac_channel) : gateOut(gateOutPin), cvInput(cvInputPin), bender(pb_dac_ptr, pb_dac_channel, pbInputPin)
     {
       globalGateOut = globalGateOut_ptr;
       timer = timer_ptr;
       ticker = ticker_ptr;
       touchPads = touch_ptr;
       io = io_ptr;
+      display = display_ptr;
       degrees = degrees_ptr;
       output1V.dac = dac_ptr;
       output1V.dacChannel = _dacChannel;
@@ -259,6 +261,7 @@ class TouchChannel {
     void enableLoopMode();
     void disableLoopMode();
     void setLoopLength(int num);
+    int getSequenceLength();
     void setLoopMultiplier(int value);
     void setLoopTotalPPQN();  // refractor into metronom class
     void setLoopTotalSteps(); // refractor into metronom class

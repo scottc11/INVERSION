@@ -113,31 +113,10 @@ void TouchChannel::clearLoop() {
   }
 }
 
-void TouchChannel::setLoopLength(int value) {
-  numLoopSteps = value;
-  setLoopTotalSteps();
-  setLoopTotalPPQN();
-  updateLoopLengthUI();
-};
-
-void TouchChannel::setLoopMultiplier(int value) {
-  loopMultiplier = value;
-  setLoopTotalSteps();
-  setLoopTotalPPQN();
-  updateLoopLengthUI();
-}
-
-void TouchChannel::setLoopTotalSteps() {
-  totalSteps = numLoopSteps * loopMultiplier;
-}
-
-void TouchChannel::setLoopTotalPPQN() {
-  totalPPQN = totalSteps * PPQN;
-}
-
 void TouchChannel::enableLoopMode() {
   recordEnabled = true;
   if (mode == MONO) {
+    display->setSequenceLEDs(this->channel, this->getSequenceLength(), true);
     setMode(MONO_LOOP);
   } else if (mode == QUANTIZE) {
     setMode(QUANTIZE_LOOP);
@@ -159,6 +138,7 @@ void TouchChannel::disableLoopMode() {
     return;
   } else {             // if no touch event recorded, revert to previous mode
     recordEnabled = false;
+    display->setSequenceLEDs(this->channel, this->getSequenceLength(), false);
     setMode(prevMode);
   }
 }

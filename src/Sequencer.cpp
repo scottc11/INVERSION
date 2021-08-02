@@ -124,3 +124,34 @@ void TouchChannel::createChordEvent(int position, uint8_t notes)
     events[position].activeNotes = notes;
     events[position].active = true;
 };
+
+void TouchChannel::setLoopLength(int value)
+{
+    numLoopSteps = value;
+    setLoopTotalSteps();
+    setLoopTotalPPQN();
+    updateLoopLengthUI();
+};
+
+int TouchChannel::getSequenceLength()
+{
+    return this->numLoopSteps;
+}
+
+void TouchChannel::setLoopMultiplier(int value)
+{
+    loopMultiplier = value;
+    setLoopTotalSteps();
+    setLoopTotalPPQN();
+    updateLoopLengthUI();
+}
+
+void TouchChannel::setLoopTotalSteps()
+{
+    totalSteps = numLoopSteps * loopMultiplier;
+}
+
+void TouchChannel::setLoopTotalPPQN()
+{
+    totalPPQN = totalSteps * PPQN;
+}

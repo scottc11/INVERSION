@@ -11,6 +11,8 @@ void GlobalControl::init() {
   degrees->init();
   degrees->attachCallback(callback(this, &GlobalControl::handleDegreeChange));
 
+  display->init();
+
   io.init();
   io.setDirection(MCP23017_PORTA, 0xff);
   io.setDirection(MCP23017_PORTB, 0xff);
@@ -22,16 +24,6 @@ void GlobalControl::init() {
   io.setInputPolarity(MCP23017_PORTB, 0b01111111);
   io.digitalReadAB(); // clear any stray interupts
   
-  display->init();
-  for (int i = 0; i < 64; i++)
-  {
-    display->setPWM(i, 127);
-    if (i != 0)
-    {
-      display->setPWM(i - 1, 0);
-    }
-    wait_ms(10);
-  }
 
   freezeLED.write(0);
   recLED.write(0);
@@ -164,8 +156,6 @@ void GlobalControl::handleButtonPress(int pad) {
       handleFreeze(true);
       break;
     case RESET:
-      incrememntor++;
-      display->setPWM(incrememntor, 127);
       break;
     case Gestures::CALIBRATE_A:
       calibrateChannel(0);

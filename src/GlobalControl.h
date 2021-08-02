@@ -9,7 +9,7 @@
 #include "DualDigitDisplay.h"
 #include "Metronome.h"
 #include "MCP23017.h"
-#include "IS31FL3739.h"
+#include "DegreeDisplay.h"
 
 class GlobalControl {
 public:
@@ -25,7 +25,7 @@ public:
   uint16_t prevIOState;
   uint8_t ledStates = 0x00;          // || chan D || chan C || chan B || chan A ||
   Metronome *metronome;
-  IS31FL3739 *display;
+  DegreeDisplay *display;
   Degrees *degrees;
   VCOCalibrator calibrator;
   TouchChannel *channels[4];
@@ -44,7 +44,7 @@ public:
 
   GlobalControl(
       Metronome *metronome_ptr,
-      IS31FL3739 *display_ptr,
+      DegreeDisplay *display_ptr,
       Degrees *degrees_ptr,
       I2C *i2c_ptr,
       TouchChannel *chanA_ptr,

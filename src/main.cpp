@@ -8,8 +8,8 @@
 #include "DAC8554.h"
 #include "MCP23017.h"
 #include "SX1509.h"
-#include "IS31FL3739.h"
 #include "VCOCalibrator.h"
+#include "DegreeDisplay.h"
 
 int OCTAVE_LED_PINS_A[4] = { 0, 1, 2, 3 };     // via TLC59116
 int OCTAVE_LED_PINS_B[4] = { 4, 5, 6, 7 };     // via TLC59116
@@ -25,7 +25,7 @@ Timer timer;
 MIDI midi(MIDI_TX, MIDI_RX);
 InterruptIn extClockInput(EXT_CLOCK_INPUT);
 
-IS31FL3739 display(&i2c3);
+DegreeDisplay display(&i2c3);
 
 DAC8554 dac1(SPI2_MOSI, SPI2_SCK, DAC1_CS);
 DAC8554 dac2(SPI2_MOSI, SPI2_SCK, DAC2_CS);
@@ -43,10 +43,10 @@ MPR121 touchPadD(&i2c1, TOUCH_INT_D, MPR121::ADDR_SDA);
 
 Degrees degrees(DEGREES_INT, &io);
 
-TouchChannel channelA(0, &timer, &ticker, &globalGate, GATE_OUT_A, IO_INT_PIN_A, ADC_A, PB_ADC_A, &touchPadA, &ioA, &degrees, &midi, &dac1, DAC8554::CHAN_A, &dac2, DAC8554::CHAN_A);
-TouchChannel channelB(1, &timer, &ticker, &globalGate, GATE_OUT_B, IO_INT_PIN_B, ADC_B, PB_ADC_B, &touchPadB, &ioB, &degrees, &midi, &dac1, DAC8554::CHAN_B, &dac2, DAC8554::CHAN_B);
-TouchChannel channelC(2, &timer, &ticker, &globalGate, GATE_OUT_C, IO_INT_PIN_C, ADC_C, PB_ADC_C, &touchPadC, &ioC, &degrees, &midi, &dac1, DAC8554::CHAN_C, &dac2, DAC8554::CHAN_C);
-TouchChannel channelD(3, &timer, &ticker, &globalGate, GATE_OUT_D, IO_INT_PIN_D, ADC_D, PB_ADC_D, &touchPadD, &ioD, &degrees, &midi, &dac1, DAC8554::CHAN_D, &dac2, DAC8554::CHAN_D);
+TouchChannel channelA(0, &timer, &ticker, &globalGate, GATE_OUT_A, IO_INT_PIN_A, ADC_A, PB_ADC_A, &touchPadA, &ioA, &display, &degrees, &midi, &dac1, DAC8554::CHAN_A, &dac2, DAC8554::CHAN_A);
+TouchChannel channelB(1, &timer, &ticker, &globalGate, GATE_OUT_B, IO_INT_PIN_B, ADC_B, PB_ADC_B, &touchPadB, &ioB, &display, &degrees, &midi, &dac1, DAC8554::CHAN_B, &dac2, DAC8554::CHAN_B);
+TouchChannel channelC(2, &timer, &ticker, &globalGate, GATE_OUT_C, IO_INT_PIN_C, ADC_C, PB_ADC_C, &touchPadC, &ioC, &display, &degrees, &midi, &dac1, DAC8554::CHAN_C, &dac2, DAC8554::CHAN_C);
+TouchChannel channelD(3, &timer, &ticker, &globalGate, GATE_OUT_D, IO_INT_PIN_D, ADC_D, PB_ADC_D, &touchPadD, &ioD, &display, &degrees, &midi, &dac1, DAC8554::CHAN_D, &dac2, DAC8554::CHAN_D);
 
 Metronome metronome(TEMPO_LED, TEMPO_POT, INT_CLOCK_OUTPUT, PPQN, DEFAULT_SEQ_LENGTH);
 
@@ -64,7 +64,7 @@ int main() {
   channelD.init();
 
   globalCTRL.init();
-  globalCTRL.loadCalibrationDataFromFlash();
+  // globalCTRL.loadCalibrationDataFromFlash();
 
   while(1) {
     globalCTRL.poll();
