@@ -28,6 +28,13 @@ void DegreeDisplay::setSequenceLEDs(int chan, int length, bool on)
     // illuminate each channels sequence length
     for (int i = 0; i < length; i++)
     {
-        ledMatrix.setPWM(CHAN_DISPLAY_LED_MAP[chan][i], on ? 80 : 0);
+        ledMatrix.setPWM(CHAN_DISPLAY_LED_MAP[chan][i], on ? OK_PWM_MID : 0);
     }
+}
+
+void DegreeDisplay::stepSequenceLED(int chan, int currStep, int prevStep) {
+    // set currStep PWM High
+    ledMatrix.setPWM(CHAN_DISPLAY_LED_MAP[chan][currStep], OK_PWM_HIGH);
+    // set prevStep PWM back to Mid
+    ledMatrix.setPWM(CHAN_DISPLAY_LED_MAP[chan][prevStep], OK_PWM_MID);
 }

@@ -91,10 +91,15 @@ void TouchChannel::poll() {
       }
 
       
-      // if ((mode == MONO_LOOP || mode == QUANTIZE_LOOP) && enableLoop)        // HANDLE SEQUENCE
-      // {
-      //   handleSequence(currPosition);
-      // }
+      if ((mode == MONO_LOOP || mode == QUANTIZE_LOOP) && enableLoop)        // HANDLE SEQUENCE
+      {
+        if (seqStepFlag)
+        {
+          display->stepSequenceLED(this->channel, currStep, prevStep);
+        }
+        // handleSequence(currPosition);
+        seqStepFlag = false;
+      }
 
       tickerFlag = false;
     }
@@ -169,12 +174,15 @@ void TouchChannel::tickClock() {
   tickerFlag = true;
 }
 
+// you cant make any I2C calls in these functions, you must defer them to a seperate thread to be executed later
 void TouchChannel::stepClock() {
+  prevStep = currStep;
   currStep += 1;
 
   if (currStep >= totalSteps) {  // when currStep eqauls number of steps in loop, reset currStep and currPosition to 0
     currStep = 0;
   }
+  seqStepFlag = true;
 }
 
 // NOTE: you probably don't want to reset the 'tick' value, as it would make it very dificult to line up with the global clock;

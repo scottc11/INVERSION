@@ -116,6 +116,7 @@ class TouchChannel {
     Degrees *degrees;
     AnalogIn cvInput;               // CV input pin for quantizer mode
 
+    volatile bool seqStepFlag;
     volatile bool tickerFlag;        // each time the clock gets ticked, this flag gets set to true - then false in polling loop
     volatile bool switchHasChanged;  // toggle switches interupt flag
     volatile bool touchDetected;
@@ -136,6 +137,7 @@ class TouchChannel {
     int prevNodePosition;      // represents the last node in the sequence which got triggered (either HIGH or LOW)
     int numLoopSteps; // how many steps the sequence contains (before applying the multiplier)
     int currStep;     // the current 'step' of the loop (lowest value == 0)
+    int prevStep;     // the previous step executed in the sequence
     int currPosition; // the current position in the in the entire sequence (measured by PPQN)
     int currTick;     // the current PPQN position of the step (0..PPQN) (lowest value == 0)
     int totalPPQN;             // how many PPQN the sequence currently contains (equal to totalSteps * PPQN)
