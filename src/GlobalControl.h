@@ -9,7 +9,7 @@
 #include "DualDigitDisplay.h"
 #include "Metronome.h"
 #include "MCP23017.h"
-#include "MCP23008.h"
+#include "IS31FL3739.h"
 
 class GlobalControl {
 public:
@@ -23,9 +23,9 @@ public:
   MCP23017 io;
   uint16_t currIOState;
   uint16_t prevIOState;
-  MCP23008 leds;
   uint8_t ledStates = 0x00;          // || chan D || chan C || chan B || chan A ||
   Metronome *metronome;
+  IS31FL3739 *display;
   Degrees *degrees;
   VCOCalibrator calibrator;
   TouchChannel *channels[4];
@@ -40,19 +40,22 @@ public:
   int selectedChannel;
   bool buttonPressed;
   uint16_t buttonsState;
+  uint8_t incrememntor = 0;
 
   GlobalControl(
       Metronome *metronome_ptr,
+      IS31FL3739 *display_ptr,
       Degrees *degrees_ptr,
       I2C *i2c_ptr,
       TouchChannel *chanA_ptr,
       TouchChannel *chanB_ptr,
       TouchChannel *chanC_ptr,
       TouchChannel *chanD_ptr
-      ) : io(i2c_ptr, MCP23017_CTRL_ADDR), leds(i2c_ptr, MCP23008_IO_ADDR), ctrlInterupt(CTRL_INT), freezeLED(FREEZE_LED), recLED(REC_LED)
+      ) : io(i2c_ptr, MCP23017_CTRL_ADDR), ctrlInterupt(CTRL_INT), freezeLED(FREEZE_LED), recLED(REC_LED)
   {
     mode = Mode::DEFAULT;
     metronome = metronome_ptr;
+    display = display_ptr;
     degrees = degrees_ptr;
     channels[0] = chanA_ptr;
     channels[1] = chanB_ptr;
@@ -93,22 +96,22 @@ public:
 
 private:
   enum PadNames
-  {                  // integers correlate to 8-bit index position
+  { // integers correlate to 8-bit index position
+    FREEZE = 0x4000,
+    RECORD = 0x2000,
+    RESET = 0x1000,
+    QUANTIZE_SEQ = 0x0800,
+    CLEAR_BEND = 0x0400,
+    CLEAR_SEQ = 0x0200,
+    BEND_MODE = 0x0100,
+    QUANTIZE_AMOUNT = 0x0080,
     SEQ_LENGTH = 0x0040,
-    PB_RANGE =   0x0020,
-    RECORD =     0x1000,
-    CLEAR_SEQ =  0x4000,
-    CLEAR_BEND = 0x2000,
-    BEND_MODE =  0x8000,
-    RESET =      0x0100,
-    FREEZE =     0x0400,
-    QUANTIZE_SEQ = 0x0200,
-    QUANTIZE_AMOUNT = 0x0010,
-    SHIFT =      0x0080,
-    CTRL_A =     0x0008,
-    CTRL_B =     0x0004,
-    CTRL_C =     0x0002,
-    CTRL_D =     0x0001
+    PB_RANGE = 0x0020,
+    SHIFT = 0x0010,
+    CTRL_A = 0x0008,
+    CTRL_B = 0x0004,
+    CTRL_C = 0x0002,
+    CTRL_D = 0x0001
   };
 
   enum Gestures

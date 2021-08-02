@@ -19,17 +19,20 @@ void GlobalControl::init() {
   io.setPullUp(MCP23017_PORTA, 0xff);
   io.setPullUp(MCP23017_PORTB, 0xff);
   io.setInputPolarity(MCP23017_PORTA, 0xff);
-  io.setInputPolarity(MCP23017_PORTB, 0xff);
+  io.setInputPolarity(MCP23017_PORTB, 0b01111111);
   io.digitalReadAB(); // clear any stray interupts
   
-  leds.init();
-  leds.setPullUp(0x00);
-  leds.setConfig(0b00100000); // disable address auto-increment
-  leds.setDirection(0x00);
-  leds.setInterupt(0x00);
-  leds.writePins(0x00);
-  leds.readPins(); // clear stray interputs
-  
+  display->init();
+  for (int i = 0; i < 64; i++)
+  {
+    display->setPWM(i, 127);
+    if (i != 0)
+    {
+      display->setPWM(i - 1, 0);
+    }
+    wait_ms(10);
+  }
+
   freezeLED.write(0);
   recLED.write(0);
 
@@ -111,18 +114,11 @@ void GlobalControl::setChannelLoopMultiplier(int pad) {
 
 void GlobalControl::setChannelBenderMode(int chan)
 {
-  ledStates &= ~(0x3 << (2 * chan));                          // clear previous value of target bits
-  ledStates |= channels[chan]->setBenderMode() << (2 * chan); // set target bits to new value
-  leds.writePins(ledStates);
+
 }
 
 void GlobalControl::setChannelBenderMode() {
-  for (int i = 0; i < 4; i++)
-  {
-    ledStates &= ~(0x3 << (2 * i));                       // clear previous value of target bits
-    ledStates |= channels[i]->setBenderMode() << (2 * i); // set target bits to new value
-  }
-  leds.writePins(ledStates);
+
 }
 
 /**
@@ -168,17 +164,19 @@ void GlobalControl::handleButtonPress(int pad) {
       handleFreeze(true);
       break;
     case RESET:
+      incrememntor++;
+      display->setPWM(incrememntor, 127);
       break;
-    case CALIBRATE_A:
+    case Gestures::CALIBRATE_A:
       calibrateChannel(0);
       break;
-    case CALIBRATE_B:
+    case Gestures::CALIBRATE_B:
       calibrateChannel(1);
       break;
-    case CALIBRATE_C:
+    case Gestures::CALIBRATE_C:
       calibrateChannel(2);
       break;
-    case CALIBRATE_D:
+    case Gestures::CALIBRATE_D:
       calibrateChannel(3);
       break;
     case CALIBRATE_BENDER:

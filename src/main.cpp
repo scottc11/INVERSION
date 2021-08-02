@@ -8,7 +8,7 @@
 #include "DAC8554.h"
 #include "MCP23017.h"
 #include "SX1509.h"
-#include "MCP23008.h"
+#include "IS31FL3739.h"
 #include "VCOCalibrator.h"
 
 int OCTAVE_LED_PINS_A[4] = { 0, 1, 2, 3 };     // via TLC59116
@@ -24,6 +24,8 @@ Ticker ticker;
 Timer timer;
 MIDI midi(MIDI_TX, MIDI_RX);
 InterruptIn extClockInput(EXT_CLOCK_INPUT);
+
+IS31FL3739 display(&i2c3);
 
 DAC8554 dac1(SPI2_MOSI, SPI2_SCK, DAC1_CS);
 DAC8554 dac2(SPI2_MOSI, SPI2_SCK, DAC2_CS);
@@ -48,7 +50,7 @@ TouchChannel channelD(3, &timer, &ticker, &globalGate, GATE_OUT_D, IO_INT_PIN_D,
 
 Metronome metronome(TEMPO_LED, TEMPO_POT, INT_CLOCK_OUTPUT, PPQN, DEFAULT_SEQ_LENGTH);
 
-GlobalControl globalCTRL(&metronome, &degrees, &i2c1, &channelA, &channelB, &channelC, &channelD);
+GlobalControl globalCTRL(&metronome, &display, &degrees, &i2c1, &channelA, &channelB, &channelC, &channelD);
 
 int main() {
   i2c1.frequency(400000);
