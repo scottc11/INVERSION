@@ -9,6 +9,12 @@
 #define DAC_1VO_ARR_SIZE 64
 #endif
 
+#define DAC_RESOLUTION 65535
+#define V_OUT_MIN 0
+#define V_OUT_MAX 6.532
+#define CALIBRATION_FLOOR 0.2
+#define NUM_OCTAVES 6
+
 const int PB_RANGE_MAP[8] = {1, 2, 3, 4, 5, 7, 10, 12};
 class VoltPerOctave
 {

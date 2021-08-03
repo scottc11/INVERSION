@@ -179,6 +179,11 @@ void GlobalControl::handleButtonPress(int pad) {
         display->benderCalibration();
       }
       break;
+    case Gestures::RESET_CALIBRATION_TO_DEFAULT:
+      display->benderCalibration();
+      saveCalibrationToFlash(true);
+      display->clear();
+      break;
     case BEND_MODE:
       break;
     case BEND_MODE_A:
@@ -317,7 +322,13 @@ void GlobalControl::saveCalibrationToFlash(bool reset /* false */)
     {
       // determine buffer index position based on channel
       int index = i + CALIBRATION_ARR_SIZE * chan;
-      // copy to buffer
+      
+      // reset to default values before copying to buffer
+      if (reset) {
+        channels[chan]->output1V.resetVoltageMap();
+      }
+
+      // copy values to buffer
       buffer[index] = channels[chan]->output1V.dacVoltageMap[i];
     }
     // load max and min Bender calibration data into buffer (two 16bit chars)
@@ -329,6 +340,8 @@ void GlobalControl::saveCalibrationToFlash(bool reset /* false */)
   flash.erase(flashAddr, flash.get_sector_size(flashAddr));     // must erase all data before a write
   flash.program(buffer, flashAddr, NUM_FLASH_CHANNEL_BYTES);
   flash.deinit();
+  
+  this->pollButtons(); // BUG: need to call this or else interupt gets stuck
 }
 
 void GlobalControl::loadCalibrationDataFromFlash() {

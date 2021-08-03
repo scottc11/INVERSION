@@ -64,7 +64,7 @@ int main() {
   channelD.init();
 
   globalCTRL.init();
-  // globalCTRL.loadCalibrationDataFromFlash();
+  globalCTRL.loadCalibrationDataFromFlash();
 
   while(1) {
     globalCTRL.poll();
