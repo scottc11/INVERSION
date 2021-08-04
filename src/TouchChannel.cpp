@@ -14,6 +14,9 @@ void TouchChannel::init() {
   bender.init();
   bender.attachActiveCallback(callback(this, &TouchChannel::benderActiveCallback));
   bender.attachIdleCallback(callback(this, &TouchChannel::benderIdleCallback));
+  // set bender mode
+  setBenderMode(PITCH_BEND);
+  setRecordLED(LOW);
 
   this->initSequencer(); // must be done after pb calibration
   this->initQuantizer();
@@ -26,24 +29,17 @@ void TouchChannel::init() {
   mode = MONO;
   uiMode = DEFAULT_UI;
   
-  setModeLed(LOW);
   this->setOctave(currOctave);
-  setGate(LOW);
 }
 
 
 void TouchChannel::initIOExpander() {
   io->init();
   io->setBlinkFrequency(SX1509::FAST);
-  io->pinMode(CHANNEL_IO_MODE_PIN, SX1509::INPUT, true);
-  io->enableInterupt(CHANNEL_IO_MODE_PIN, SX1509::RISING);
 
-  io->pinMode(CHANNEL_LED_MUX_SEL, SX1509::OUTPUT);
-  io->setOpenDrain(CHANNEL_LED_MUX_SEL, 1); // unclear whether pullup or open-drain makes a difference
-  io->digitalWrite(CHANNEL_LED_MUX_SEL, 0);
-
-  io->ledConfig(CHANNEL_MODE_LED);
-  io->ledConfig(CHANNEL_GATE_LED);
+  io->ledConfig(CHANNEL_PB_LED);
+  io->ledConfig(CHANNEL_REC_LED);
+  io->ledConfig(CHANNEL_RATCHET_LED);
 
   // initialize IO Led Driver pins
   for (int i = 0; i < 8; i++)
@@ -106,10 +102,6 @@ void TouchChannel::poll() {
   }
 }
 // ------------------------------------------------------------------------
-
-void TouchChannel::setLEDMux(LedState state) {
-  io->digitalWrite(CHANNEL_LED_MUX_SEL, state);
-}
 
 void TouchChannel::clearLoop() {
   if (this->sequenceContainsEvents) {
@@ -306,16 +298,16 @@ void TouchChannel::setMode(ChannelMode targetMode)
       setAllLeds(LOW);               // I think this is just a "start from a clean slate" kinda thing
       setAllLeds(DIM_HIGH);
       updateOctaveLeds(currOctave);
-      setModeLed(LOW);
+      setRecordLED(LOW);
       triggerNote(currNoteIndex, currOctave, SUSTAIN);
       break;
     case MONO_LOOP:
       enableLoop = true;
       mode = MONO_LOOP;
       setAllLeds(LOW);
-      setAllLeds(DIM_LOW);
+      setAllLeds(DIM_HIGH);
       updateOctaveLeds(currOctave);
-      setModeLed(HIGH);
+      setRecordLED(HIGH);
       triggerNote(currNoteIndex, currOctave, SUSTAIN);
       break;
     case QUANTIZE:
@@ -325,16 +317,16 @@ void TouchChannel::setMode(ChannelMode targetMode)
       setAllLeds(DIM_HIGH);
       updateActiveDegreeLeds(activeDegrees);
       updateOctaveLeds(activeOctaves);
-      setModeLed(LOW);
+      setRecordLED(LOW);
       triggerNote(currNoteIndex, currOctave, OFF);
       break;
     case QUANTIZE_LOOP:
       enableLoop = true;
       mode = QUANTIZE_LOOP;
       setAllLeds(LOW);
-      setAllLeds(DIM_LOW);
+      setAllLeds(DIM_HIGH);
       updateActiveDegreeLeds(activeDegrees);
-      setModeLed(HIGH);
+      setRecordLED(HIGH);
       triggerNote(currNoteIndex, currOctave, OFF);
       break;
   }
@@ -586,27 +578,39 @@ void TouchChannel::setGate(bool state)
 {
   gateState = state;
   gateOut.write(state);
-  setGateLed(state ? HIGH : LOW);
 }
 
-void TouchChannel::setModeLed(LedState state) {
+void TouchChannel::setRecordLED(LedState state) {
   if (state == HIGH)
   {
-    io->analogWrite(CHANNEL_MODE_LED, 20);
+    io->analogWrite(CHANNEL_REC_LED, 20);
   }
   else
   {
-    io->analogWrite(CHANNEL_MODE_LED, 0);
+    io->analogWrite(CHANNEL_REC_LED, 0);
   }
 }
-void TouchChannel::setGateLed(LedState state) {
+
+void TouchChannel::setRatchetLED(LedState state) {
   if (state == HIGH)
   {
-    io->analogWrite(CHANNEL_GATE_LED, 255);
+    io->analogWrite(CHANNEL_RATCHET_LED, 255);
   }
   else
   {
-    io->analogWrite(CHANNEL_GATE_LED, 0);
+    io->analogWrite(CHANNEL_RATCHET_LED, 0);
+  }
+}
+
+void TouchChannel::setPitchBendLED(LedState state)
+{
+  if (state == HIGH)
+  {
+    io->analogWrite(CHANNEL_PB_LED, 255);
+  }
+  else
+  {
+    io->analogWrite(CHANNEL_PB_LED, 0);
   }
 }
 
@@ -634,16 +638,36 @@ void TouchChannel::benderIdleCallback() {
   output1V.setPitchBend(0);
 }
 
-
-int TouchChannel::setBenderMode(int targetMode /*0*/)
+int TouchChannel::setBenderMode(BenderMode targetMode /*INCREMENT_BENDER_MODE*/)
 {
-  if (bender.mode < 3)
+  if (targetMode != INCREMENT_BENDER_MODE) {
+    bender.mode = targetMode;
+  }
+  else if (bender.mode < 3)
   {
     bender.mode += 1;
   }
   else
   {
     bender.mode = 0;
+  }
+  switch (bender.mode) {
+    case BEND_OFF:
+      setRatchetLED(LOW);
+      setPitchBendLED(LOW);
+      break;
+    case PITCH_BEND:
+      setRatchetLED(LOW);
+      setPitchBendLED(HIGH);
+      break;
+    case RATCHET:
+      setRatchetLED(HIGH);
+      setPitchBendLED(LOW);
+      break;
+    case RATCHET_PITCH_BEND:
+      setRatchetLED(HIGH);
+      setPitchBendLED(HIGH);
+      break;
   }
   return bender.mode;
 }

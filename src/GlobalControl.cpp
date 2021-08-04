@@ -106,7 +106,7 @@ void GlobalControl::setChannelLoopMultiplier(int pad) {
 
 void GlobalControl::setChannelBenderMode(int chan)
 {
-
+  channels[chan]->setBenderMode();
 }
 
 void GlobalControl::setChannelBenderMode() {

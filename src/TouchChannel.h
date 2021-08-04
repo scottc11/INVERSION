@@ -16,10 +16,9 @@
 #include "VoltPerOctave.h"
 #include "DegreeDisplay.h"
 
-#define CHANNEL_IO_MODE_PIN 9
-#define CHANNEL_LED_MUX_SEL 8
-#define CHANNEL_MODE_LED 11
-#define CHANNEL_GATE_LED 10
+#define CHANNEL_REC_LED 11
+#define CHANNEL_RATCHET_LED 10
+#define CHANNEL_PB_LED 9
 #define NULL_NOTE_INDEX 99  // used to identify a 'null' or 'deleted' sequence event
 
 static const int OCTAVE_LED_PINS[4] = { 3, 2, 1, 0 };               // io pin map for octave LEDs
@@ -90,7 +89,8 @@ class TouchChannel {
       BEND_OFF = 0,
       PITCH_BEND = 1,
       RATCHET = 2,
-      RATCHET_PITCH_BEND = 3
+      RATCHET_PITCH_BEND = 3,
+      INCREMENT_BENDER_MODE = 4
     };
 
     enum UIMode { // not yet implemented
@@ -211,11 +211,11 @@ class TouchChannel {
     void ioInteruptFn() { modeChangeDetected = true; }
 
     void initIOExpander();
-    void setLEDMux(LedState state);
     void setLed(int index, LedState state, bool settingUILed=false);
     void setOctaveLed(int octave, LedState state, bool settingUILed=false);
-    void setModeLed(LedState state);
-    void setGateLed(LedState state);
+    void setRecordLED(LedState state);
+    void setRatchetLED(LedState state);
+    void setPitchBendLED(LedState state);
     void setAllLeds(int state);
     void updateOctaveLeds(int octave);
     void updateLoopMultiplierLeds();
@@ -224,7 +224,7 @@ class TouchChannel {
     // BENDER
     void benderActiveCallback(uint16_t value);
     void benderIdleCallback();
-    int setBenderMode(int targetMode = 0);
+    int setBenderMode(BenderMode targetMode = INCREMENT_BENDER_MODE);
 
     void updateDegrees();
     void handleIOInterupt();
