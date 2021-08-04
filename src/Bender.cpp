@@ -84,12 +84,12 @@ int Bender::calculateOutput(uint16_t value)
     // BEND UP
     if (value > zeroBend && value < maxBend)
     {
-        return ((dacOutputRange / (maxBend - zeroBend)) * (value - zeroBend)) * 1; // inverted
+        return ((dacOutputRange / (maxBend - zeroBend)) * (value - zeroBend)) * (outputInverted ? -1 : 1); // inverted
     }
     // BEND DOWN
     else if (value < zeroBend && value > minBend)
     {
-        return ((dacOutputRange / (minBend - zeroBend)) * (value - zeroBend)) * -1; // non-inverted
+        return ((dacOutputRange / (minBend - zeroBend)) * (value - zeroBend)) * (outputInverted ? 1 : -1); // non-inverted
     }
     // ELSE executes when a bender is poorly calibrated, and exceeds its max or min bend
     else {

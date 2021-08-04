@@ -175,6 +175,7 @@ class TouchChannel {
         PinName gateOutPin,
         PinName cvInputPin,
         PinName pbInputPin,
+        bool pbInverted,
         MPR121 *touch_ptr,
         SX1509 *io_ptr,
         DegreeDisplay *display_ptr,
@@ -183,7 +184,7 @@ class TouchChannel {
         DAC8554 *dac_ptr,
         DAC8554::Channels _dacChannel,
         DAC8554 *pb_dac_ptr,
-        DAC8554::Channels pb_dac_channel) : gateOut(gateOutPin), cvInput(cvInputPin), bender(pb_dac_ptr, pb_dac_channel, pbInputPin)
+        DAC8554::Channels pb_dac_channel) : gateOut(gateOutPin), cvInput(cvInputPin), bender(pb_dac_ptr, pb_dac_channel, pbInputPin, pbInverted)
     {
       globalGateOut = globalGateOut_ptr;
       timer = timer_ptr;

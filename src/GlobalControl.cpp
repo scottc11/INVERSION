@@ -8,7 +8,6 @@ void GlobalControl::init() {
   // try adding back mbedignore libraries and debug
   metronome->attachTickCallback(callback(this, &GlobalControl::tickChannels));
 
-  degrees->init();
   degrees->attachCallback(callback(this, &GlobalControl::handleDegreeChange));
 
   display->init();

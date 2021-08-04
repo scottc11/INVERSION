@@ -31,6 +31,7 @@ void TouchChannel::init() {
   
   this->setOctave(currOctave);
   setGate(LOW);
+  triggerNote(currNoteIndex, currOctave, NoteState::SUSTAIN);
 }
 
 
