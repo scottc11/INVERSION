@@ -30,6 +30,7 @@ void TouchChannel::init() {
   uiMode = DEFAULT_UI;
   
   this->setOctave(currOctave);
+  setGate(LOW);
 }
 
 
@@ -512,7 +513,6 @@ void TouchChannel::triggerNote(int index, int octave, NoteState state, bool blin
       currNoteIndex = index;
       currOctave = octave;
       setGate(HIGH);
-      setGlobalGate(HIGH);
       output1V.updateDAC(mappedIndex, 0);
       midi->sendNoteOn(channel, calculateMIDINoteValue(index, octave), 100);
       break;
@@ -527,7 +527,6 @@ void TouchChannel::triggerNote(int index, int octave, NoteState state, bool blin
       break;
     case OFF:
       setGate(LOW);
-      setGlobalGate(LOW);
       midi->sendNoteOff(channel, calculateMIDINoteValue(index, octave), 100);
       // wait_us(1);
       break;
@@ -570,14 +569,21 @@ void TouchChannel::reset() {
   }
 }
 
+/**
+ * The Global Gate Output that gets triggered by all channels.
+*/  
 void TouchChannel::setGlobalGate(bool state) {
   globalGateOut->write(state);
 }
 
+/**
+ * sets the +5v gate output via GPIO into a Schmitt-Trigger which is inverted polarity
+*/
 void TouchChannel::setGate(bool state)
 {
-  gateState = state;
-  gateOut.write(state);
+  gateState = !state;
+  gateOut.write(gateState);
+  this->setGlobalGate(gateState);
 }
 
 void TouchChannel::setRecordLED(LedState state) {
