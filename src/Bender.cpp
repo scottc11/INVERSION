@@ -105,7 +105,7 @@ int Bender::calculateOutput(uint16_t value)
 void Bender::updateDAC(uint16_t value)
 {
     dacOutput = value; // copy to class member
-    dac->write(dacChan, outputFilter(32767 + value));
+    dac->write(dacChan, outputFilter(32767 + dacOutput));
 }
 
 bool Bender::isIdle() {
@@ -127,6 +127,7 @@ void Bender::attachActiveCallback(Callback<void(uint16_t bend)> func)
 }
 
 uint16_t Bender::read() {
-    currBend = inputFilter(adc.read_u16());
+    uint16_t adcRead = outputInverted ? 65535 - adc.read_u16() : adc.read_u16();
+    currBend = inputFilter(adcRead);
     return currBend;
 }
