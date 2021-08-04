@@ -20,7 +20,6 @@ public:
     Callback<void()> idleCallback;   // MBED Callback which gets called when the Bender is idle / not-active
     Callback<void(uint16_t bend)> activeCallback; // MBED Callback which gets called when the Bender is active / being bent
 
-    int mode;
     int currBend;                                 // 16 bit value (0..65,536)
     float dacOutputRange = 32767;                 // range in which the DAC can output (in either direction)
     int dacOutput;                                // the amount of Control Voltage to apply Pitch Bend DAC

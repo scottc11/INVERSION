@@ -621,18 +621,32 @@ void TouchChannel::setPitchBendLED(LedState state)
 */
 void TouchChannel::benderActiveCallback(uint16_t value)
 {
-  uint16_t bend;
-  // Pitch Bend UP
-  if (value > bender.zeroBend && value < bender.maxBend)
+  switch (this->benderMode)
   {
-    bend = output1V.calculatePitchBend(value, bender.zeroBend, bender.maxBend);
-    output1V.setPitchBend(bend); // non-inverted
-  }
-  // Pitch Bend DOWN
-  else if (value < bender.zeroBend && value > bender.minBend)
-  {
-    bend = output1V.calculatePitchBend(value, bender.zeroBend, bender.minBend); // NOTE: inverted mapping
-    output1V.setPitchBend(bend * -1); // inverted
+  case BEND_OFF:
+    // do nothing
+    break;
+  case PITCH_BEND:
+    uint16_t bend;
+    // Pitch Bend UP
+    if (value > bender.zeroBend && value < bender.maxBend)
+    {
+      bend = output1V.calculatePitchBend(value, bender.zeroBend, bender.maxBend);
+      output1V.setPitchBend(bend); // non-inverted
+    }
+    // Pitch Bend DOWN
+    else if (value < bender.zeroBend && value > bender.minBend)
+    {
+      bend = output1V.calculatePitchBend(value, bender.zeroBend, bender.minBend); // NOTE: inverted mapping
+      output1V.setPitchBend(bend * -1);                                           // inverted
+    }
+    break;
+  case RATCHET:
+    break;
+  case RATCHET_PITCH_BEND:
+    break;
+  default:
+    break;
   }
 }
 
@@ -643,17 +657,17 @@ void TouchChannel::benderIdleCallback() {
 int TouchChannel::setBenderMode(BenderMode targetMode /*INCREMENT_BENDER_MODE*/)
 {
   if (targetMode != INCREMENT_BENDER_MODE) {
-    bender.mode = targetMode;
+    benderMode = targetMode;
   }
-  else if (bender.mode < 3)
+  else if (benderMode < 3)
   {
-    bender.mode += 1;
+    benderMode += 1;
   }
   else
   {
-    bender.mode = 0;
+    benderMode = 0;
   }
-  switch (bender.mode) {
+  switch (benderMode) {
     case BEND_OFF:
       setRatchetLED(LOW);
       setPitchBendLED(LOW);
@@ -671,5 +685,5 @@ int TouchChannel::setBenderMode(BenderMode targetMode /*INCREMENT_BENDER_MODE*/)
       setPitchBendLED(HIGH);
       break;
   }
-  return bender.mode;
+  return benderMode;
 }

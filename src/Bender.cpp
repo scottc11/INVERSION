@@ -7,7 +7,6 @@ void Bender::init() {
     outputFilter.setInitial(this->dacOutputRange); // set initial value to middle of DAC (0V)
     calibrateIdle();
     updateDAC(0);
-    this->mode = 0;
 }
 
 void Bender::calibrateIdle()

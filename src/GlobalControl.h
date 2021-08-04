@@ -95,7 +95,7 @@ public:
   }
 
 private:
-  enum PadNames
+  enum PadNames : uint16_t
   { // integers correlate to 8-bit index position
     FREEZE = 0x4000,
     RECORD = 0x2000,
@@ -114,18 +114,18 @@ private:
     CTRL_D = 0x0001
   };
 
-  enum Gestures
+  enum Gestures : uint16_t
   {
     CALIBRATE_A = 0x0018, // SHIFT + CTRL_A
     CALIBRATE_B = 0x0014,
     CALIBRATE_C = 0x0012,
     CALIBRATE_D = 0x0011,
-    CALIBRATE_BENDER = 0x0110,  // SHIFT + BEND_MODE
+    CALIBRATE_BENDER = 0x0110,             // SHIFT + BEND_MODE
     RESET_CALIBRATION_TO_DEFAULT = 0x2110, // SHIFT + REC + BEND_MODE
-    BEND_MODE_A = 0x0108,
-    BEND_MODE_B = 0x0104,
-    BEND_MODE_C = 0x0102,
-    BEND_MODE_D = 0x0101,
+    BEND_MODE_A = CTRL_A | BEND_MODE,
+    BEND_MODE_B = CTRL_B | BEND_MODE,
+    BEND_MODE_C = CTRL_C | BEND_MODE,
+    BEND_MODE_D = CTRL_D | BEND_MODE,
     CLEAR_SEQ_A = 0x4008,
     CLEAR_SEQ_B = 0x4004,
     CLEAR_SEQ_C = 0x4002,

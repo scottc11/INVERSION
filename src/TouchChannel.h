@@ -105,6 +105,7 @@ class TouchChannel {
     ChannelMode mode;               // which mode channel is currently in
     ChannelMode prevMode;           // used for reverting to previous mode when toggling between UI modes
     UIMode uiMode;                  // for settings and alt LED uis
+    int benderMode;
     DigitalOut gateOut;             // gate output pin
     DigitalOut *globalGateOut;      // 
     Timer *timer;                   // timer for handling duration based touch events
