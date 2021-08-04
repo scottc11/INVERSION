@@ -43,10 +43,10 @@ MPR121 touchPadD(&i2c1, TOUCH_INT_D, MPR121::ADDR_SDA);
 
 Degrees degrees(DEGREES_INT, &io);
 
-TouchChannel channelA(0, &timer, &ticker, &globalGate, GATE_OUT_A, IO_INT_PIN_A, ADC_A, PB_ADC_A, &touchPadA, &ioA, &display, &degrees, &midi, &dac1, DAC8554::CHAN_A, &dac2, DAC8554::CHAN_A);
-TouchChannel channelB(1, &timer, &ticker, &globalGate, GATE_OUT_B, IO_INT_PIN_B, ADC_B, PB_ADC_B, &touchPadB, &ioB, &display, &degrees, &midi, &dac1, DAC8554::CHAN_B, &dac2, DAC8554::CHAN_B);
-TouchChannel channelC(2, &timer, &ticker, &globalGate, GATE_OUT_C, IO_INT_PIN_C, ADC_C, PB_ADC_C, &touchPadC, &ioC, &display, &degrees, &midi, &dac1, DAC8554::CHAN_C, &dac2, DAC8554::CHAN_C);
-TouchChannel channelD(3, &timer, &ticker, &globalGate, GATE_OUT_D, IO_INT_PIN_D, ADC_D, PB_ADC_D, &touchPadD, &ioD, &display, &degrees, &midi, &dac1, DAC8554::CHAN_D, &dac2, DAC8554::CHAN_D);
+TouchChannel channelA(0, &timer, &ticker, &globalGate, GATE_OUT_A, ADC_A, PB_ADC_A, &touchPadA, &ioA, &display, &degrees, &midi, &dac1, DAC8554::CHAN_A, &dac2, DAC8554::CHAN_A);
+TouchChannel channelB(1, &timer, &ticker, &globalGate, GATE_OUT_B, ADC_B, PB_ADC_B, &touchPadB, &ioB, &display, &degrees, &midi, &dac1, DAC8554::CHAN_B, &dac2, DAC8554::CHAN_B);
+TouchChannel channelC(2, &timer, &ticker, &globalGate, GATE_OUT_C, ADC_C, PB_ADC_C, &touchPadC, &ioC, &display, &degrees, &midi, &dac1, DAC8554::CHAN_C, &dac2, DAC8554::CHAN_C);
+TouchChannel channelD(3, &timer, &ticker, &globalGate, GATE_OUT_D, ADC_D, PB_ADC_D, &touchPadD, &ioD, &display, &degrees, &midi, &dac1, DAC8554::CHAN_D, &dac2, DAC8554::CHAN_D);
 
 Metronome metronome(TEMPO_LED, TEMPO_POT, INT_CLOCK_OUTPUT, PPQN, DEFAULT_SEQ_LENGTH);
 

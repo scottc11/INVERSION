@@ -120,7 +120,6 @@ class TouchChannel {
     volatile bool tickerFlag;        // each time the clock gets ticked, this flag gets set to true - then false in polling loop
     volatile bool switchHasChanged;  // toggle switches interupt flag
     volatile bool touchDetected;
-    volatile bool modeChangeDetected;
 
     VoltPerOctave output1V;
     Bender bender;
@@ -165,9 +164,6 @@ class TouchChannel {
 
     int currNoteIndex;
     int prevNoteIndex;
-
-    int currModeBtnState;        // ** to be refractored into MomentaryButton class
-    int prevModeBtnState;        // ** to be refractored into MomentaryButton class
     
     bool freezeChannel;          //
 
@@ -177,7 +173,6 @@ class TouchChannel {
         Ticker *ticker_ptr,
         DigitalOut *globalGateOut_ptr,
         PinName gateOutPin,
-        PinName ioIntPin,
         PinName cvInputPin,
         PinName pbInputPin,
         MPR121 *touch_ptr,
@@ -207,8 +202,6 @@ class TouchChannel {
     void poll();
     void onTouch(uint8_t pad);
     void onRelease(uint8_t pad);
-
-    void ioInteruptFn() { modeChangeDetected = true; }
 
     void initIOExpander();
     void setLed(int index, LedState state, bool settingUILed=false);
@@ -253,6 +246,7 @@ class TouchChannel {
 
     // SEQUENCER METHODS
     void initSequencer();
+    void toggleQuantizerMode();
     void clearEvent(int position);
     void clearEventSequence();
     void clearPitchBendSequence();

@@ -64,11 +64,6 @@
 #define MCP23017_DEGREES_ADDR    0x20 // 0100000
 #define MCP23017_CTRL_ADDR       0x24 // 0100100
 
-#define IO_INT_PIN_A             PA_12
-#define IO_INT_PIN_B             PA_11
-#define IO_INT_PIN_C             PA_10
-#define IO_INT_PIN_D             PA_9
-
 #define SX1509_CHAN_A_ADDR       0x3E
 #define SX1509_CHAN_B_ADDR       0x70
 #define SX1509_CHAN_C_ADDR       0x3F

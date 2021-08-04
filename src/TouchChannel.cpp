@@ -71,11 +71,6 @@ void TouchChannel::poll() {
     // after 3 seconds, call a function which takes the currTouched variable and applies it to the activeDegreeLimit.
     // then disable timer poll flag.
 
-    if (modeChangeDetected) {
-      this->handleIOInterupt();
-      modeChangeDetected = false;
-    }
-
     touchPads->poll();
 
     if (tickerFlag) {    // every PPQN, read ADCs and update
@@ -280,8 +275,8 @@ void TouchChannel::onRelease(uint8_t pad) {
  * 
  * still needs to be written to handle 3-stage toggle switch.
 **/
-void TouchChannel::handleIOInterupt() {
-  if (mode == MONO || mode == MONO_LOOP) {
+void TouchChannel::toggleQuantizerMode() {
+  if (this->mode == MONO || this->mode == MONO_LOOP) {
     setMode(QUANTIZE);
   }
   else {

@@ -152,6 +152,18 @@ void GlobalControl::pollButtons()
 void GlobalControl::handleButtonPress(int pad) {
     
   switch (pad) {
+    case CTRL_A:
+      channels[0]->toggleQuantizerMode();
+      break;
+    case CTRL_B:
+      channels[1]->toggleQuantizerMode();
+      break;
+    case CTRL_C:
+      channels[2]->toggleQuantizerMode();
+      break;
+    case CTRL_D:
+      channels[3]->toggleQuantizerMode();
+      break;
     case FREEZE:
       handleFreeze(true);
       break;
