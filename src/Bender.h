@@ -5,7 +5,7 @@
 #include "DAC8554.h"
 #include "ExpoFilter.h"
 
-#define PB_CALIBRATION_RANGE 64
+#define PB_CALIBRATION_RANGE 300
 #define DEFAULT_MAX_BEND 40000
 #define DEFAULT_MIN_BEND 25000
 
