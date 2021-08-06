@@ -37,7 +37,7 @@ void TouchChannel::init() {
 
 void TouchChannel::initIOExpander() {
   io->init();
-  io->setBlinkFrequency(SX1509::FAST);
+  io->setBlinkFrequency(SX1509::ULTRA_FAST);
 
   io->ledConfig(CHANNEL_PB_LED);
   io->ledConfig(CHANNEL_REC_LED);
