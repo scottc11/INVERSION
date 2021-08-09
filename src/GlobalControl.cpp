@@ -293,6 +293,7 @@ bool GlobalControl::handleGesture() {
 */
 void GlobalControl::handleFreeze(bool enable) {
   // freeze all channels
+  freezeLED.write(enable);
   channels[0]->freeze(enable);
   channels[1]->freeze(enable);
   channels[2]->freeze(enable);
