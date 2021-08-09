@@ -21,7 +21,9 @@ public:
     };
 
     void reset() {
+        prevPosition = currPosition;
         currPosition = 0;
+        prevStep = currStep;
         currStep = 0;
     };
     

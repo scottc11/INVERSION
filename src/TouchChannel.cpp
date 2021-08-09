@@ -494,7 +494,10 @@ void TouchChannel::freeze(bool freeze) {
 void TouchChannel::resetSequence()
 {
   sequence.reset();
-  handleSequence(sequence.currPosition);
+  if (sequenceContainsEvents) {
+    display->stepSequenceLED(this->channel, sequence.currStep, sequence.prevStep);
+    handleSequence(sequence.currPosition);
+  }
 }
 
 /**

@@ -305,10 +305,11 @@ void GlobalControl::handleFreeze(bool enable) {
 */
 void GlobalControl::handleReset() {
   // reset all channels
-  channels[0]->resetSequence();
-  channels[1]->resetSequence();
-  channels[2]->resetSequence();
-  channels[3]->resetSequence();
+  for (int i = 0; i < 4; i++)
+  {
+    channels[i]->resetSequence();
+  }
+  
 }
 
 
