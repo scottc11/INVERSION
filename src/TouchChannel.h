@@ -14,6 +14,7 @@
 #include "BitwiseMethods.h"
 #include "ArrayMethods.h"
 #include "VoltPerOctave.h"
+#include "SuperSeq.h"
 #include "DegreeDisplay.h"
 
 #define CHANNEL_REC_LED 11
@@ -124,6 +125,7 @@ class TouchChannel {
 
     VoltPerOctave output1V;
     Bender bender;
+    SuperSeq sequence;
 
     // SEQUENCER variables
     SequenceNode events[PPQN * MAX_SEQ_LENGTH];
@@ -131,17 +133,7 @@ class TouchChannel {
     int prevEventIndex; // index for disabling the last "triggered" event in the loop
     bool sequenceContainsEvents;
     bool clearExistingNodes;   
-    bool deleteEvents;
     bool enableLoop = false;   // "Event Triggering Loop" -> This will prevent looped events from triggering if a new event is currently being created
-    int prevNodePosition;      // represents the last node in the sequence which got triggered (either HIGH or LOW)
-    int numLoopSteps; // how many steps the sequence contains (before applying the multiplier)
-    int currStep;     // the current 'step' of the loop (lowest value == 0)
-    int prevStep;     // the previous step executed in the sequence
-    int currPosition; // the current position in the in the entire sequence (measured by PPQN)
-    int currTick;     // the current PPQN position of the step (0..PPQN) (lowest value == 0)
-    int totalPPQN;             // how many PPQN the sequence currently contains (equal to totalSteps * PPQN)
-    int totalSteps;            // how many Steps the sequence contains (in total ie. numLoopSteps * loopMultiplier)
-    int loopMultiplier;        // number between 1 and 4 based on Octave Leds of channel
 
     // quantizer variables
     int activeDegrees;                    // 8 bits to determine which scale degrees are presently active/inactive (active = 1, inactive= 0)
@@ -212,7 +204,6 @@ class TouchChannel {
     void setPitchBendLED(LedState state);
     void setAllLeds(int state);
     void updateOctaveLeds(int octave);
-    void updateLoopMultiplierLeds();
     void updateLeds(uint8_t touched);  // could be obsolete
 
     // BENDER
@@ -223,10 +214,6 @@ class TouchChannel {
     void updateDegrees();
     void handleIOInterupt();
     void setMode(ChannelMode targetMode);
-
-    void tickClock();
-    void stepClock();
-    void resetClock();
     
     int quantizePosition(int position);
     int calculateMIDINoteValue(int index, int octave);
@@ -236,17 +223,15 @@ class TouchChannel {
     void setGate(bool state);
     void setGlobalGate(bool state);
     void freeze(bool enable);
-    void reset();
 
     // UI METHODS
     void enableUIMode(UIMode target);
     void disableUIMode();
-    void updateLoopLengthUI();
-    void handleLoopLengthUI();
     void updatePitchBendRangeUI();
 
     // SEQUENCER METHODS
     void initSequencer();
+    void resetSequence();
     void clearEvent(int position);
     void clearEventSequence();
     void clearPitchBendSequence();
@@ -255,11 +240,6 @@ class TouchChannel {
     void createPitchBendEvent(int position, uint16_t pitchBend);
     void enableSequencer();
     void disableSequencer();
-    void setLoopLength(int num);
-    int getSequenceLength();
-    void setLoopMultiplier(int value);
-    void setLoopTotalPPQN();  // refractor into metronom class
-    void setLoopTotalSteps(); // refractor into metronom class
     void handleSequence(int position);
 
     // QUANTIZER METHODS

@@ -75,7 +75,7 @@ public:
 
   void handleDegreeChange();
   void handleFreeze(bool enable);
-  void handleClockReset();
+  void handleReset();
   void enableLoopLengthUI();
 
   void handleStateChange(int currState, int prevState);
@@ -85,7 +85,6 @@ public:
   void pollButtons();
   void handleOctaveTouched();
   void setChannelOctave(int pad);
-  void setChannelLoopMultiplier(int pad);
   void setChannelBenderMode();
   void setChannelBenderMode(int chan);
   void tickChannels();

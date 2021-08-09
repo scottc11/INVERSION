@@ -86,11 +86,11 @@ void TouchChannel::poll() {
       
       if ((mode == MONO_LOOP || mode == QUANTIZE_LOOP) && enableLoop)        // HANDLE SEQUENCE
       {
-        if (seqStepFlag)
+        if (sequence.currStep != sequence.prevStep)
         {
-          display->stepSequenceLED(this->channel, currStep, prevStep);
+          display->stepSequenceLED(this->channel, sequence.currStep, sequence.prevStep);
         }
-        handleSequence(currPosition);
+        handleSequence(sequence.currPosition);
         seqStepFlag = false;
       }
 
@@ -102,7 +102,7 @@ void TouchChannel::poll() {
 
 void TouchChannel::enableSequencer() {
   if (mode == MONO) {
-    display->setSequenceLEDs(this->channel, this->getSequenceLength(), true);
+    display->setSequenceLEDs(this->channel, sequence.length, true);
     setMode(MONO_LOOP);
   } else if (mode == QUANTIZE) {
     setMode(QUANTIZE_LOOP);
@@ -122,57 +122,13 @@ void TouchChannel::disableSequencer() {
   if (sequenceContainsEvents) {   // if a touch event was recorded, remain in loop mode
     return;
   } else {             // if no touch event recorded, revert to previous mode
-    display->setSequenceLEDs(this->channel, this->getSequenceLength(), false);
+    display->setSequenceLEDs(this->channel, sequence.length, false);
     if (mode == MONO_LOOP) {
       setMode(MONO);
     } else if (mode == QUANTIZE_LOOP) {
       setMode(QUANTIZE);
     }
   }
-}
-
-/** ------------------------------------------------------------------------
- *         CLOCK METHODS
----------------------------------------------------------------------------- */
-
-/**
- * ADVANCE LOOP POSITION
- * advance the channels loop position by 1 'tick', a 'tick' being a single Pulse Per Quarter Note or "PPQN"
-*/
-
-void TouchChannel::tickClock() {
-
-  currTick += 1;
-  currPosition += 1;
-  
-  // when currTick exceeds PPQN, reset to 0
-  if (currTick >= PPQN) {
-    currTick = 0;
-    this->stepClock();
-  }
-  if (currPosition >= totalPPQN) {
-    currPosition = 0;
-    currStep = 0;
-  }
-  tickerFlag = true;
-}
-
-// you cant make any I2C calls in these functions, you must defer them to a seperate thread to be executed later
-void TouchChannel::stepClock() {
-  prevStep = currStep;
-  currStep += 1;
-
-  if (currStep >= totalSteps) {  // when currStep eqauls number of steps in loop, reset currStep and currPosition to 0
-    currStep = 0;
-  }
-  seqStepFlag = true;
-}
-
-// NOTE: you probably don't want to reset the 'tick' value, as it would make it very dificult to line up with the global clock;
-void TouchChannel::resetClock() {
-  currTick = 0;
-  currPosition = 0;
-  currStep = 0;
 }
 
 /** -------------------------------------------------------------------------------------------
@@ -203,11 +159,11 @@ void TouchChannel::onTouch(uint8_t pad) {
       case QUANTIZE_LOOP:
         // every touch detected, take a snapshot of all active degree values and apply them to a EventNode
         setActiveDegrees(bitWrite(activeDegrees, pad, !bitRead(activeDegrees, pad)));
-        createChordEvent(currPosition, activeDegrees);
+        createChordEvent(sequence.currPosition, activeDegrees);
         break;
       case MONO_LOOP:
         clearExistingNodes = true;
-        createEvent(currPosition, pad, HIGH);
+        createEvent(sequence.currPosition, pad, HIGH);
         triggerNote(pad, currOctave, ON);
         break;
       }
@@ -216,9 +172,6 @@ void TouchChannel::onTouch(uint8_t pad) {
     { // LOOP_LENGTH_UI mode
       switch (uiMode)
       {
-      case LOOP_LENGTH_UI:
-        setLoopLength(pad + 1); // loop length is not zero indexed
-        break;
       case PB_RANGE_UI:
         output1V.setPitchBendRange(pad);
         updatePitchBendRangeUI();
@@ -249,7 +202,7 @@ void TouchChannel::onRelease(uint8_t pad) {
       case QUANTIZE_LOOP:
         break;
       case MONO_LOOP:
-        createEvent(currPosition, pad, LOW);
+        createEvent(sequence.currPosition, pad, LOW);
         triggerNote(pad, currOctave, OFF);
         clearExistingNodes = false;
         // create note OFF event
@@ -470,16 +423,6 @@ void TouchChannel::updateOctaveLeds(int octave) {
   }
 }
 
-void TouchChannel::updateLoopMultiplierLeds() {
-  for (int i = 0; i < 4; i++) {
-    if (i < loopMultiplier) {  // loopMultiplier is not zero indexed
-      setOctaveLed(i, HIGH, true);
-    } else {
-      setOctaveLed(i, LOW, true);
-    }
-  }
-}
-
 
 /** ------------------------------------------------------------------------
  *        TRIGGER NOTE
@@ -543,19 +486,15 @@ void TouchChannel::freeze(bool freeze) {
   this->freezeChannel = freeze;
 }
 
-void TouchChannel::reset() {
-  // you should probably get the currently queued event, see if it has been triggered yet, and disable it if it has been triggered
-  switch (mode) {
-    case MONO:
-      resetClock();
-      break;
-    case QUANTIZE_LOOP:
-      resetClock();
-      break;
-    case MONO_LOOP:
-      resetClock();
-      break;
-  }
+/**
+ * @brief reset the sequence
+ * @todo you should probably get the currently queued event, see if it has been triggered yet, and disable it if it has been triggered
+ * @todo you can't reset 
+*/
+void TouchChannel::resetSequence()
+{
+  sequence.reset();
+  handleSequence(sequence.currPosition);
 }
 
 /**

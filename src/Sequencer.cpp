@@ -2,14 +2,8 @@
 
 void TouchChannel::initSequencer()
 {
-    numLoopSteps = DEFAULT_SEQ_LENGTH;
-    loopMultiplier = 1;
+    sequence.init();
     timeQuantizationMode = QUANT_NONE;
-    currStep = 0;
-    currTick = 0;
-    currPosition = 0;
-    setLoopTotalSteps();
-    setLoopTotalPPQN();
     clearEventSequence(); // initialize values in sequence array
 }
 
@@ -24,10 +18,10 @@ void TouchChannel::handleSequence(int position)
             {
                 if (clearExistingNodes) // when a node is being created (touched degree has not yet been released), this flag gets set to true so that the sequence handler clears existing nodes
                 {
-                    if (events[prevNodePosition].gate == HIGH) // if previous event overlaps new event
+                    if (events[sequence.prevEventPos].gate == HIGH) // if previous event overlaps new event
                     {
-                        int newPosition = position == 0 ? totalPPQN : position - 1;
-                        createEvent(newPosition - 1, events[prevNodePosition].noteIndex, LOW); // create a copy of event with gate == LOW @ currPos - 1
+                        int newPosition = position == 0 ? sequence.lengthPPQN : position - 1;
+                        createEvent(newPosition - 1, events[sequence.prevEventPos].noteIndex, LOW); // create a copy of event with gate == LOW @ currPos - 1
                     }
                     if (events[position].active) // if new event overlaps succeeding events, overwrite those events
                     {
@@ -38,18 +32,18 @@ void TouchChannel::handleSequence(int position)
                 {
                     if (events[position].gate == HIGH)
                     {
-                        prevNodePosition = position;                             // store position into variable
+                        sequence.prevEventPos = position;                             // store position into variable
                         triggerNote(events[position].noteIndex, currOctave, ON); // trigger note ON
                     }
                     else
                     {
-                        if (events[prevNodePosition].noteIndex != events[position].noteIndex)
+                        if (events[sequence.prevEventPos].noteIndex != events[position].noteIndex)
                         {
                             clearEvent(position); // cleanup: if this 'active' LOW node does not match the last active HIGH node, delete it - it is a remnant of a previously deleted node
                         }
                         else // set node.gate LOW
                         {
-                            prevNodePosition = position;                              // store position into variable
+                            sequence.prevEventPos = position;                              // store position into variable
                             triggerNote(events[position].noteIndex, currOctave, OFF); // trigger note OFF
                         }
                     }
@@ -124,34 +118,3 @@ void TouchChannel::createChordEvent(int position, uint8_t notes)
     events[position].activeNotes = notes;
     events[position].active = true;
 };
-
-void TouchChannel::setLoopLength(int value)
-{
-    numLoopSteps = value;
-    setLoopTotalSteps();
-    setLoopTotalPPQN();
-    updateLoopLengthUI();
-};
-
-int TouchChannel::getSequenceLength()
-{
-    return this->numLoopSteps;
-}
-
-void TouchChannel::setLoopMultiplier(int value)
-{
-    loopMultiplier = value;
-    setLoopTotalSteps();
-    setLoopTotalPPQN();
-    updateLoopLengthUI();
-}
-
-void TouchChannel::setLoopTotalSteps()
-{
-    totalSteps = numLoopSteps * loopMultiplier;
-}
-
-void TouchChannel::setLoopTotalPPQN()
-{
-    totalPPQN = totalSteps * PPQN;
-}

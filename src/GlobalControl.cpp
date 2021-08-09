@@ -35,10 +35,12 @@ void GlobalControl::init() {
 
 
 void GlobalControl::tickChannels() {
-  channels[0]->tickClock();
-  channels[1]->tickClock();
-  channels[2]->tickClock();
-  channels[3]->tickClock();
+  for (int i = 0; i < 4; i++)
+  {
+    channels[i]->sequence.advance();
+    channels[i]->tickerFlag = true;
+  }
+  
 }
 
 
@@ -80,27 +82,6 @@ void GlobalControl::selectChannel(int channel) {
   
   selectedChannel = channel;
   channels[selectedChannel]->isSelected = true;
-}
-
-void GlobalControl::setChannelLoopMultiplier(int pad) {
-  switch (pad) {
-    case 0:  channels[2]->setLoopMultiplier(1); break;
-    case 1:  channels[2]->setLoopMultiplier(2); break;
-    case 2:  channels[2]->setLoopMultiplier(3); break;
-    case 3:  channels[2]->setLoopMultiplier(4); break;
-    case 4:  channels[3]->setLoopMultiplier(1); break;
-    case 5:  channels[3]->setLoopMultiplier(2); break;
-    case 6:  channels[3]->setLoopMultiplier(3); break;
-    case 7:  channels[3]->setLoopMultiplier(4); break;
-    case 8:  channels[0]->setLoopMultiplier(1); break;
-    case 9:  channels[0]->setLoopMultiplier(2); break;
-    case 10: channels[0]->setLoopMultiplier(3); break;
-    case 11: channels[0]->setLoopMultiplier(4); break;
-    case 12: channels[1]->setLoopMultiplier(1); break;
-    case 13: channels[1]->setLoopMultiplier(2); break;
-    case 14: channels[1]->setLoopMultiplier(3); break;
-    case 15: channels[1]->setLoopMultiplier(4); break;
-  }
 }
 
 void GlobalControl::setChannelBenderMode(int chan)
@@ -168,6 +149,7 @@ void GlobalControl::handleButtonPress(int pad) {
       break;
 
     case RESET:
+      handleReset();
       break;
     
     case Gestures::CALIBRATE_A:
@@ -233,6 +215,12 @@ void GlobalControl::handleButtonPress(int pad) {
       channels[3]->enableUIMode(TouchChannel::PB_RANGE_UI);
       break;
     case SEQ_LENGTH:
+      // this->display->clear();
+      // for (int chan = 0; chan < 4; chan++)
+      // {
+      //   // display->setSequenceLEDs(chan, channels[chan]->nu)
+      // }
+      
       // channels[0]->enableUIMode(TouchChannel::LOOP_LENGTH_UI);
       // channels[1]->enableUIMode(TouchChannel::LOOP_LENGTH_UI);
       // channels[2]->enableUIMode(TouchChannel::LOOP_LENGTH_UI);
@@ -315,12 +303,12 @@ void GlobalControl::handleFreeze(bool enable) {
 /**
  * HANDLE RESET
 */
-void GlobalControl::handleClockReset() {
+void GlobalControl::handleReset() {
   // reset all channels
-  channels[0]->reset();
-  channels[1]->reset();
-  channels[2]->reset();
-  channels[3]->reset();
+  channels[0]->resetSequence();
+  channels[1]->resetSequence();
+  channels[2]->resetSequence();
+  channels[3]->resetSequence();
 }
 
 
