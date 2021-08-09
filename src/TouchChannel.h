@@ -133,7 +133,6 @@ class TouchChannel {
     bool clearExistingNodes;   
     bool deleteEvents;
     bool enableLoop = false;   // "Event Triggering Loop" -> This will prevent looped events from triggering if a new event is currently being created
-    bool recordEnabled;        //
     int prevNodePosition;      // represents the last node in the sequence which got triggered (either HIGH or LOW)
     int numLoopSteps; // how many steps the sequence contains (before applying the multiplier)
     int currStep;     // the current 'step' of the loop (lowest value == 0)
@@ -248,16 +247,14 @@ class TouchChannel {
 
     // SEQUENCER METHODS
     void initSequencer();
-    void toggleQuantizerMode();
     void clearEvent(int position);
     void clearEventSequence();
     void clearPitchBendSequence();
     void createEvent(int position, int noteIndex, bool gate);
     void createChordEvent(int position, uint8_t notes);
     void createPitchBendEvent(int position, uint16_t pitchBend);
-    void clearLoop(); // refractor into clearEventSequence()
-    void enableLoopMode();
-    void disableLoopMode();
+    void enableSequencer();
+    void disableSequencer();
     void setLoopLength(int num);
     int getSequenceLength();
     void setLoopMultiplier(int value);
@@ -267,6 +264,7 @@ class TouchChannel {
 
     // QUANTIZER METHODS
     void initQuantizer();
+    void toggleQuantizerMode();
     void handleCVInput();
     void setActiveDegrees(int degrees);
     void updateActiveDegreeLeds(uint8_t degrees);

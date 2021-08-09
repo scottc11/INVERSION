@@ -90,7 +90,7 @@ void TouchChannel::poll() {
         {
           display->stepSequenceLED(this->channel, currStep, prevStep);
         }
-        // handleSequence(currPosition);
+        handleSequence(currPosition);
         seqStepFlag = false;
       }
 
@@ -100,15 +100,7 @@ void TouchChannel::poll() {
 }
 // ------------------------------------------------------------------------
 
-void TouchChannel::clearLoop() {
-  if (this->sequenceContainsEvents) {
-    this->clearEventSequence();
-    setMode(prevMode);
-  }
-}
-
-void TouchChannel::enableLoopMode() {
-  recordEnabled = true;
+void TouchChannel::enableSequencer() {
   if (mode == MONO) {
     display->setSequenceLEDs(this->channel, this->getSequenceLength(), true);
     setMode(MONO_LOOP);
@@ -117,7 +109,7 @@ void TouchChannel::enableLoopMode() {
   }
 }
 
-void TouchChannel::disableLoopMode() {
+void TouchChannel::disableSequencer() {
 
   // a nice feature here would be to only have the LEDs be red when REC is held down, and flash the green LEDs 
   // when a channel contains loop events, but REC is NOT held down. You would only be able to add new events to 
@@ -128,12 +120,14 @@ void TouchChannel::disableLoopMode() {
   // the new loop length would just increase the multiplier by one
 
   if (sequenceContainsEvents) {   // if a touch event was recorded, remain in loop mode
-    recordEnabled = false;
     return;
   } else {             // if no touch event recorded, revert to previous mode
-    recordEnabled = false;
     display->setSequenceLEDs(this->channel, this->getSequenceLength(), false);
-    setMode(prevMode);
+    if (mode == MONO_LOOP) {
+      setMode(MONO);
+    } else if (mode == QUANTIZE_LOOP) {
+      setMode(QUANTIZE);
+    }
   }
 }
 
@@ -333,7 +327,6 @@ void TouchChannel::setMode(ChannelMode targetMode)
  * take a number between 0 - 3 and apply to currOctave
 **/
 void TouchChannel::setOctave(int value) {
-  
   currOctave = value;
 
   switch (mode) {

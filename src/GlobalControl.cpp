@@ -166,8 +166,10 @@ void GlobalControl::handleButtonPress(int pad) {
     case FREEZE:
       handleFreeze(true);
       break;
+
     case RESET:
       break;
+    
     case Gestures::CALIBRATE_A:
       calibrateChannel(0);
       break;
@@ -180,6 +182,7 @@ void GlobalControl::handleButtonPress(int pad) {
     case Gestures::CALIBRATE_D:
       calibrateChannel(3);
       break;
+    
     case Gestures::CALIBRATE_BENDER:
       if (this->mode == CALIBRATING_BENDER) {
         this->saveCalibrationToFlash();
@@ -190,13 +193,16 @@ void GlobalControl::handleButtonPress(int pad) {
         display->benderCalibration();
       }
       break;
+    
     case Gestures::RESET_CALIBRATION_TO_DEFAULT:
       display->benderCalibration();
       saveCalibrationToFlash(true);
       display->clear();
       break;
+    
     case BEND_MODE:
       break;
+    
     case BEND_MODE_A:
       setChannelBenderMode(0);
       break;
@@ -208,6 +214,17 @@ void GlobalControl::handleButtonPress(int pad) {
       break;
     case BEND_MODE_D:
       setChannelBenderMode(3);
+      break;
+    
+    case CLEAR_SEQ:
+      channels[0]->clearEventSequence();
+      channels[0]->disableSequencer();
+      channels[1]->clearEventSequence();
+      channels[1]->disableSequencer();
+      channels[2]->clearEventSequence();
+      channels[2]->disableSequencer();
+      channels[3]->clearEventSequence();
+      channels[3]->disableSequencer();
       break;
     case PB_RANGE:
       channels[0]->enableUIMode(TouchChannel::PB_RANGE_UI);
@@ -224,17 +241,17 @@ void GlobalControl::handleButtonPress(int pad) {
     case RECORD:
       if (!recordEnabled) {
         recLED.write(1);
-        channels[0]->enableLoopMode();
-        channels[1]->enableLoopMode();
-        channels[2]->enableLoopMode();
-        channels[3]->enableLoopMode();
+        channels[0]->enableSequencer();
+        channels[1]->enableSequencer();
+        channels[2]->enableSequencer();
+        channels[3]->enableSequencer();
         recordEnabled = true;
       } else {
         recLED.write(0);
-        channels[0]->disableLoopMode();
-        channels[1]->disableLoopMode();
-        channels[2]->disableLoopMode();
-        channels[3]->disableLoopMode();
+        channels[0]->disableSequencer();
+        channels[1]->disableSequencer();
+        channels[2]->disableSequencer();
+        channels[3]->disableSequencer();
         recordEnabled = false;
       }
       break;
@@ -265,10 +282,10 @@ void GlobalControl::handleButtonRelease(int pad)
       channels[3]->disableUIMode();
       break;
     case RECORD:
-      // channels[0]->disableLoopMode();
-      // channels[1]->disableLoopMode();
-      // channels[2]->disableLoopMode();
-      // channels[3]->disableLoopMode();
+      // channels[0]->disableSequencer();
+      // channels[1]->disableSequencer();
+      // channels[2]->disableSequencer();
+      // channels[3]->disableSequencer();
       break;
   }
 }
