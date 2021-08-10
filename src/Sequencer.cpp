@@ -21,7 +21,7 @@ void TouchChannel::handleSequence(int position)
                     if (events[sequence.prevEventPos].gate == HIGH) // if previous event overlaps new event
                     {
                         int newPosition = position == 0 ? sequence.lengthPPQN : position - 1;
-                        createEvent(newPosition - 1, events[sequence.prevEventPos].noteIndex, LOW, quantization); // create a copy of event with gate == LOW @ currPos - 1
+                        createEvent(newPosition, events[sequence.prevEventPos].noteIndex, LOW, quantization); // create a copy of event with gate == LOW @ currPos - 1
                     }
                     if (events[position].active) // if new event overlaps succeeding events, overwrite those events
                     {
