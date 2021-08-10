@@ -3,7 +3,7 @@
 void VoltPerOctave::init()
 {
     dac->init();
-    setPitchBendRange(1); // default to a whole tone
+    setPitchBendRange(5);
 }
 
 /**
