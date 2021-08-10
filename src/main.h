@@ -78,7 +78,7 @@
 #define SLEW_CV_BUFFER                 1000
 
 #define DEFAULT_SEQ_LENGTH     8
-#define MAX_SEQ_LENGTH         32
+#define MAX_SEQ_LENGTH         16
 
 #define DEFAULT_VOLTAGE_ADJMNT      200
 #define MAX_CALIB_ATTEMPTS          20
