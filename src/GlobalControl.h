@@ -37,6 +37,7 @@ public:
   uint32_t flashAddr = 0x08060000;   // should be 'sector 7', program memory address starts @ 0x08000000
 
   Mode mode;
+  bool gestureFlag;                  // for making sure no artifacts execute after a gesture is performed
   bool recordEnabled;                // used for toggling REC led among other things...
   int selectedChannel;
   bool buttonPressed;
@@ -68,7 +69,6 @@ public:
   void init();
   void poll();
   void selectChannel(int channel);
-  void clearAllChannelEvents();
   void calibrateChannel(int chan);
   void saveCalibrationToFlash(bool reset=false);
   void loadCalibrationDataFromFlash();
@@ -88,6 +88,8 @@ public:
   void setChannelOctave(int pad);
   void setChannelBenderMode(int chan);
   void tickChannels();
+
+  void clearChannelSequence(int chan);
 
   void handleControlInterupt() {
     buttonPressed = true;
@@ -125,10 +127,10 @@ private:
     BEND_MODE_B = CTRL_B | BEND_MODE,
     BEND_MODE_C = CTRL_C | BEND_MODE,
     BEND_MODE_D = CTRL_D | BEND_MODE,
-    CLEAR_SEQ_A = 0x4008,
-    CLEAR_SEQ_B = 0x4004,
-    CLEAR_SEQ_C = 0x4002,
-    CLEAR_SEQ_D = 0x4001,
+    CLEAR_SEQ_A = CLEAR_SEQ | CTRL_A,
+    CLEAR_SEQ_B = CLEAR_SEQ | CTRL_B,
+    CLEAR_SEQ_C = CLEAR_SEQ | CTRL_C,
+    CLEAR_SEQ_D = CLEAR_SEQ | CTRL_D,
     CLEAR_BEND_SEQ_A = 0x2008,
     CLEAR_BEND_SEQ_B = 0x2004,
     CLEAR_BEND_SEQ_C = 0x2002,

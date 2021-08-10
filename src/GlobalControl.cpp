@@ -192,16 +192,19 @@ void GlobalControl::handleButtonPress(int pad) {
       setChannelBenderMode(3);
       break;
     
-    case CLEAR_SEQ:
-      channels[0]->clearEventSequence();
-      channels[0]->disableSequencer();
-      channels[1]->clearEventSequence();
-      channels[1]->disableSequencer();
-      channels[2]->clearEventSequence();
-      channels[2]->disableSequencer();
-      channels[3]->clearEventSequence();
-      channels[3]->disableSequencer();
+    case CLEAR_SEQ_A:
+      this->clearChannelSequence(0);
       break;
+    case CLEAR_SEQ_B:
+      this->clearChannelSequence(1);
+      break;
+    case CLEAR_SEQ_C:
+      this->clearChannelSequence(2);
+      break;
+    case CLEAR_SEQ_D:
+      this->clearChannelSequence(3);
+      break;
+
     case PB_RANGE:
       channels[0]->enableUIMode(TouchChannel::PB_RANGE_UI);
       channels[1]->enableUIMode(TouchChannel::PB_RANGE_UI);
@@ -251,6 +254,16 @@ void GlobalControl::handleButtonRelease(int pad)
       channels[1]->disableUIMode();
       channels[2]->disableUIMode();
       channels[3]->disableUIMode();
+      break;
+    case CLEAR_SEQ:
+      if (!gestureFlag) {
+        for (int i = 0; i < 4; i++)
+        {
+          channels[i]->clearEventSequence();
+          channels[i]->disableSequencer();
+        }
+      }
+      gestureFlag = false;
       break;
     case SEQ_LENGTH:
       this->display->clear();
@@ -379,3 +392,8 @@ void GlobalControl::calibrateBenders() {
   }
 }
 
+void GlobalControl::clearChannelSequence(int chan) {
+  gestureFlag = true;
+  channels[chan]->clearEventSequence();
+  channels[chan]->disableSequencer();
+}
