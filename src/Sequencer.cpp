@@ -84,9 +84,37 @@ void TouchChannel::clearPitchBendSequence()
     }
 };
 
-void TouchChannel::createEvent(int position, int noteIndex, bool gate)
+int Q_QUARTER_NOTE[2] = { 0, 96 };
+int Q_EIGTH_NOTE[3] = { 0, 48, 96 };
+int Q_SIXTEENTH_NOTE[4] = { 0, 24, 48, 96 };
+int Q_THIRTY_SECOND_NOTE[9] = { 0, 12, 24, 36, 48, 60, 72, 84, 96 };
+int Q_SIXTY_FOURTH_NOTE[12] = { 0, 6, 12, 18, 24, 30, 36, 72, 78, 84, 90, 96 };
+int Q_ONE_28TH_NOTE[33] = { 0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84, 87, 90, 93, 96 };
+
+int TouchChannel::quantizePosition(int pos, TouchChannel::Quantization target) {
+    switch (target) {
+        case QUARTER:
+            return arr_find_closest_int(Q_QUARTER_NOTE, 2, pos);
+        case EIGTH:
+            return arr_find_closest_int(Q_EIGTH_NOTE, 3, pos);
+        case SIXTEENTH:
+            return arr_find_closest_int(Q_SIXTEENTH_NOTE, 4, pos);
+        case THIRTY_SECOND:
+            return arr_find_closest_int(Q_THIRTY_SECOND_NOTE, 9, pos);
+        case SIXTY_FOURTH:
+            return arr_find_closest_int(Q_SIXTY_FOURTH_NOTE, 12, pos);
+        case ONE_28TH:
+            return arr_find_closest_int(Q_ONE_28TH_NOTE, 33, pos);
+    }
+};
+
+void TouchChannel::createEvent(int position, int noteIndex, bool gate, Quantization quant)
 {
     if (sequenceContainsEvents == false) { sequenceContainsEvents = true; }
+
+    // volatile int superQuant = quantizePosition(position, quant);
+    // volatile int minorQuant = sequence.currStep * PPQN;
+    // position = minorQuant + superQuant;
 
     events[position].noteIndex = noteIndex;
     events[position].gate = gate;

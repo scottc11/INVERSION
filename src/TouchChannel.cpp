@@ -92,7 +92,6 @@ void TouchChannel::poll() {
           display->stepSequenceLED(this->channel, sequence.currStep, sequence.prevStep);
         }
         handleSequence(sequence.currPosition);
-        seqStepFlag = false;
       }
 
       tickerFlag = false;
@@ -164,7 +163,7 @@ void TouchChannel::onTouch(uint8_t pad) {
         break;
       case MONO_LOOP:
         clearExistingNodes = true;
-        createEvent(sequence.currPosition, pad, HIGH);
+        createEvent(sequence.currPosition, pad, HIGH, quantization);
         triggerNote(pad, currOctave, ON);
         break;
       }
@@ -203,7 +202,7 @@ void TouchChannel::onRelease(uint8_t pad) {
       case QUANTIZE_LOOP:
         break;
       case MONO_LOOP:
-        createEvent(sequence.currPosition, pad, LOW);
+        createEvent(sequence.currPosition, pad, LOW, quantization);
         triggerNote(pad, currOctave, OFF);
         clearExistingNodes = false;
         // create note OFF event

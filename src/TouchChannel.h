@@ -101,6 +101,16 @@ class TouchChannel {
       PB_RANGE_UI
     };
 
+    enum Quantization
+    {
+      QUARTER = 96,
+      EIGTH = 48,
+      SIXTEENTH = 24,
+      THIRTY_SECOND = 12,
+      SIXTY_FOURTH = 6,
+      ONE_28TH = 3
+    };
+
     int channel;                    // 0 based index to represent channel
     bool isSelected;
     bool gateState;                 // the current state of the gate output pin
@@ -119,7 +129,6 @@ class TouchChannel {
     Degrees *degrees;
     AnalogIn cvInput;               // CV input pin for quantizer mode
 
-    volatile bool seqStepFlag;
     volatile bool tickerFlag;        // each time the clock gets ticked, this flag gets set to true - then false in polling loop
     volatile bool switchHasChanged;  // toggle switches interupt flag
     volatile bool touchDetected;
@@ -131,6 +140,8 @@ class TouchChannel {
     // SEQUENCER variables
     SequenceNode events[PPQN * MAX_SEQ_LENGTH];
     QuantizeMode timeQuantizationMode;
+    Quantization quantization;
+
     int prevEventIndex; // index for disabling the last "triggered" event in the loop
     bool sequenceContainsEvents;
     bool clearExistingNodes;   
@@ -190,6 +201,7 @@ class TouchChannel {
       output1V.dacChannel = _dacChannel;
       midi = midi_p;
       channel = _channel;
+      quantization = EIGTH;
     };
 
     void init();
@@ -217,7 +229,6 @@ class TouchChannel {
     void handleIOInterupt();
     void setMode(ChannelMode targetMode);
     
-    int quantizePosition(int position);
     int calculateMIDINoteValue(int index, int octave);
 
     void setOctave(int value);
@@ -234,10 +245,11 @@ class TouchChannel {
     // SEQUENCER METHODS
     void initSequencer();
     void resetSequence();
+    int quantizePosition(int pos, TouchChannel::Quantization target);
     void clearEvent(int position);
     void clearEventSequence();
     void clearPitchBendSequence();
-    void createEvent(int position, int noteIndex, bool gate);
+    void createEvent(int position, int noteIndex, bool gate, Quantization quant);
     void createChordEvent(int position, uint8_t notes);
     void createPitchBendEvent(int position, uint16_t pitchBend);
     void enableSequencer();
