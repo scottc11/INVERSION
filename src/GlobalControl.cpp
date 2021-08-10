@@ -256,6 +256,9 @@ void GlobalControl::handleButtonRelease(int pad)
       this->display->clear();
       for (int chan = 0; chan < 4; chan++)
       {
+        if (channels[chan]->sequenceContainsEvents) {
+          display->setSequenceLEDs(chan, channels[chan]->sequence.length, true);
+        }
         channels[chan]->setBenderMode(TouchChannel::BenderMode::BEND_OFF);
       }
       break;
