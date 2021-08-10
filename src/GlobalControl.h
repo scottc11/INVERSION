@@ -17,7 +17,8 @@ public:
   {
     DEFAULT,
     CALIBRATING_1VO,
-    CALIBRATING_BENDER
+    CALIBRATING_BENDER,
+    SET_SEQUENCE_LENGTH
   };
 
   MCP23017 io;
@@ -85,7 +86,6 @@ public:
   void pollButtons();
   void handleOctaveTouched();
   void setChannelOctave(int pad);
-  void setChannelBenderMode();
   void setChannelBenderMode(int chan);
   void tickChannels();
 
@@ -104,8 +104,8 @@ private:
     CLEAR_SEQ = 0x0200,
     BEND_MODE = 0x0100,
     QUANTIZE_AMOUNT = 0x0080,
-    SEQ_LENGTH = 0x0040,
-    PB_RANGE = 0x0020,
+    SEQ_LENGTH = 0x0020,
+    PB_RANGE = 0x0040,
     SHIFT = 0x0010,
     CTRL_A = 0x0008,
     CTRL_B = 0x0004,

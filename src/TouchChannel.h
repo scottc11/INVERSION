@@ -91,7 +91,8 @@ class TouchChannel {
       PITCH_BEND = 1,
       RATCHET = 2,
       RATCHET_PITCH_BEND = 3,
-      INCREMENT_BENDER_MODE = 4
+      INCREMENT_BENDER_MODE = 4,
+      BEND_MENU = 5
     };
 
     enum UIMode { // not yet implemented
@@ -209,6 +210,7 @@ class TouchChannel {
     // BENDER
     void benderActiveCallback(uint16_t value);
     void benderIdleCallback();
+    void benderTriStateCallback(Bender::BendState state);
     int setBenderMode(BenderMode targetMode = INCREMENT_BENDER_MODE);
 
     void updateDegrees();

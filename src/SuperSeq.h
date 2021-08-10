@@ -28,7 +28,8 @@ public:
     };
     
     void setLength(int steps) {
-        if (steps <= MAX_SEQ_LENGTH) {
+        if (steps > 0 && steps <= MAX_SEQ_LENGTH)
+        {
             length = steps;
             lengthPPQN = length * PPQN;
         }

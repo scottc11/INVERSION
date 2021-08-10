@@ -14,6 +14,7 @@ void TouchChannel::init() {
   bender.init();
   bender.attachActiveCallback(callback(this, &TouchChannel::benderActiveCallback));
   bender.attachIdleCallback(callback(this, &TouchChannel::benderIdleCallback));
+  bender.attachTriStateCallback(callback(this, &TouchChannel::benderTriStateCallback));
   // set bender mode
   setBenderMode(PITCH_BEND);
   setRecordLED(LOW);
@@ -564,13 +565,13 @@ void TouchChannel::benderActiveCallback(uint16_t value)
   case PITCH_BEND:
     uint16_t bend;
     // Pitch Bend UP
-    if (value > bender.zeroBend && value < bender.maxBend)
+    if (bender.currState == Bender::BEND_UP)
     {
       bend = output1V.calculatePitchBend(value, bender.zeroBend, bender.maxBend);
       output1V.setPitchBend(bend); // non-inverted
     }
     // Pitch Bend DOWN
-    else if (value < bender.zeroBend && value > bender.minBend)
+    else if (bender.currState == Bender::BEND_DOWN)
     {
       bend = output1V.calculatePitchBend(value, bender.zeroBend, bender.minBend); // NOTE: inverted mapping
       output1V.setPitchBend(bend * -1);                                           // inverted
@@ -580,13 +581,50 @@ void TouchChannel::benderActiveCallback(uint16_t value)
     break;
   case RATCHET_PITCH_BEND:
     break;
-  default:
+  case BEND_MENU:
     break;
   }
 }
 
+void TouchChannel::benderTriStateCallback(Bender::BendState state)
+{
+  switch (this->benderMode) {
+    case BEND_OFF:
+      break;
+    case PITCH_BEND:
+      break;
+    case RATCHET:
+      break;
+    case RATCHET_PITCH_BEND:
+      break;
+    case BEND_MENU:
+      if (state == Bender::BendState::BEND_UP) {
+        sequence.setLength(sequence.length + 1);
+        display->setSequenceLEDs(this->channel, sequence.length, true);
+      }
+      else if (state == Bender::BendState::BEND_DOWN) {
+        display->setSequenceLEDs(this->channel, sequence.length, false);
+        sequence.setLength(sequence.length - 1);
+        display->setSequenceLEDs(this->channel, sequence.length, true);
+      }
+      break;
+  }
+}
+
 void TouchChannel::benderIdleCallback() {
-  output1V.setPitchBend(0);
+  switch (this->benderMode) {
+    case BEND_OFF:
+      break;
+    case PITCH_BEND:
+      break;
+    case RATCHET:
+      break;
+    case RATCHET_PITCH_BEND:
+      break;
+    case BEND_MENU:
+      // set var to no longer active?
+      break;
+  }
 }
 
 int TouchChannel::setBenderMode(BenderMode targetMode /*INCREMENT_BENDER_MODE*/)
@@ -618,6 +656,9 @@ int TouchChannel::setBenderMode(BenderMode targetMode /*INCREMENT_BENDER_MODE*/)
     case RATCHET_PITCH_BEND:
       setRatchetLED(HIGH);
       setPitchBendLED(HIGH);
+      break;
+    case BEND_MENU:
+      display->setSequenceLEDs(channel, sequence.length, true);
       break;
   }
   return benderMode;
