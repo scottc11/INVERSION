@@ -38,6 +38,17 @@ public:
     int getLength();
 
     /**
+     * @brief will return position + 1 as long as it isn't the last pulse in the sequence
+    */ 
+    int getNextPosition(int position) {
+        if (position + 1 < lengthPPQN) {
+            return position + 1;
+        } else {
+            return 0;
+        }
+    }
+
+    /**
      * @brief advance the sequencer position by 1
      * @note you cant make any I2C calls in these functions, you must defer them to a seperate thread to be executed later
     */
