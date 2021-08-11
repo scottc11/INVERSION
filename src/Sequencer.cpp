@@ -118,12 +118,11 @@ void TouchChannel::createEvent(int position, int noteIndex, bool gate, Quantizat
     if (sequenceContainsEvents == false) { sequenceContainsEvents = true; }
 
     // handle quantization first, for overdubbing purposes
-    // volatile int superQuant = quantizePosition(position, quant);
-    // volatile int minorQuant = sequence.currStep * PPQN;
-    // position = minorQuant + superQuant;
+    position = (sequence.currStep * PPQN) + quantizePosition(position, quant);
 
     // if the previous event was a GATE HIGH event, re-position its succeeding GATE LOW event to the new events position - 1
     // NOTE: you will also have to trigger the GATE LOW, so that the new event will generate a trigger event
+    // TODO: intsead of "position - 1", do "position - (quant / 2)"
     if (events[sequence.prevEventPos].gate == HIGH)
     {
         int newPosition = position == 0 ? sequence.lengthPPQN - 1 : position - 1;
@@ -137,7 +136,7 @@ void TouchChannel::createEvent(int position, int noteIndex, bool gate, Quantizat
     // move this new event to the next available position @ the curr quantize level divided by 2 (to not interfere with next event), which will also have to be checked for any existing events.
     // If there is an existing GATE HIGH event at the next position, this new event will have to be placed right before it executes, regardless of quantization
     if (gate == LOW && events[position].active && events[position].gate == HIGH) {
-        position = position - 1;
+        position = position + (quant / 2);
     }
 
     sequence.newEventPos = position; // store all new events position
