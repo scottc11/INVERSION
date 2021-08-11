@@ -3,7 +3,7 @@
 void TouchChannel::initSequencer()
 {
     sequence.init();
-    quantization = QUANT_8th;
+    quantization = QUANT_16th;
     clearEventSequence(); // initialize values in sequence array
 }
 
