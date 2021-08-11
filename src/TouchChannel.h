@@ -249,8 +249,8 @@ class TouchChannel {
     void createEvent(int position, int noteIndex, bool gate, Quantization quant);
     void createChordEvent(int position, uint8_t notes);
     void createPitchBendEvent(int position, uint16_t pitchBend);
-    void enableSequencer();
-    void disableSequencer();
+    void enableSequenceRecording();
+    void disableSequenceRecording();
     void handleSequence(int position);
 
     // QUANTIZER METHODS

@@ -221,17 +221,17 @@ void GlobalControl::handleButtonPress(int pad) {
     case RECORD:
       if (!recordEnabled) {
         recLED.write(1);
-        channels[0]->enableSequencer();
-        channels[1]->enableSequencer();
-        channels[2]->enableSequencer();
-        channels[3]->enableSequencer();
+        channels[0]->enableSequenceRecording();
+        channels[1]->enableSequenceRecording();
+        channels[2]->enableSequenceRecording();
+        channels[3]->enableSequenceRecording();
         recordEnabled = true;
       } else {
         recLED.write(0);
-        channels[0]->disableSequencer();
-        channels[1]->disableSequencer();
-        channels[2]->disableSequencer();
-        channels[3]->disableSequencer();
+        channels[0]->disableSequenceRecording();
+        channels[1]->disableSequenceRecording();
+        channels[2]->disableSequenceRecording();
+        channels[3]->disableSequenceRecording();
         recordEnabled = false;
       }
       break;
@@ -260,7 +260,7 @@ void GlobalControl::handleButtonRelease(int pad)
         for (int i = 0; i < 4; i++)
         {
           channels[i]->clearEventSequence();
-          channels[i]->disableSequencer();
+          channels[i]->disableSequenceRecording();
         }
       }
       gestureFlag = false;
@@ -276,10 +276,6 @@ void GlobalControl::handleButtonRelease(int pad)
       }
       break;
     case RECORD:
-      // channels[0]->disableSequencer();
-      // channels[1]->disableSequencer();
-      // channels[2]->disableSequencer();
-      // channels[3]->disableSequencer();
       break;
   }
 }
@@ -395,5 +391,5 @@ void GlobalControl::calibrateBenders() {
 void GlobalControl::clearChannelSequence(int chan) {
   gestureFlag = true;
   channels[chan]->clearEventSequence();
-  channels[chan]->disableSequencer();
+  channels[chan]->disableSequenceRecording();
 }

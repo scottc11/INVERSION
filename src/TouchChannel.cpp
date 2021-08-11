@@ -85,7 +85,7 @@ void TouchChannel::poll() {
       }
 
       
-      if ((mode == MONO_LOOP || mode == QUANTIZE_LOOP) && enableLoop)        // HANDLE SEQUENCE
+      if (sequence.playbackEnabled) // HANDLE SEQUENCE
       {
         if (sequence.currStep != sequence.prevStep)
         {
@@ -100,16 +100,17 @@ void TouchChannel::poll() {
 }
 // ------------------------------------------------------------------------
 
-void TouchChannel::enableSequencer() {
+void TouchChannel::enableSequenceRecording() {
+  sequence.recordEnabled = true;
+  display->setSequenceLEDs(this->channel, sequence.length, true);
   if (mode == MONO) {
-    display->setSequenceLEDs(this->channel, sequence.length, true);
     setMode(MONO_LOOP);
   } else if (mode == QUANTIZE) {
     setMode(QUANTIZE_LOOP);
   }
 }
 
-void TouchChannel::disableSequencer() {
+void TouchChannel::disableSequenceRecording() {
 
   // a nice feature here would be to only have the LEDs be red when REC is held down, and flash the green LEDs 
   // when a channel contains loop events, but REC is NOT held down. You would only be able to add new events to 
@@ -118,7 +119,7 @@ void TouchChannel::disableSequencer() {
   // ADDITIONALLY, this would be a good place to count the amount of steps which have passed while the REC button has
   // been held down, and if this value is greater than the current loop length, update the loop length to accomodate.
   // the new loop length would just increase the multiplier by one
-
+  sequence.recordEnabled = false;
   if (sequenceContainsEvents) {   // if a touch event was recorded, remain in loop mode
     return;
   } else {             // if no touch event recorded, revert to previous mode
@@ -162,8 +163,10 @@ void TouchChannel::onTouch(uint8_t pad) {
         createChordEvent(sequence.currPosition, activeDegrees);
         break;
       case MONO_LOOP:
-        sequence.overdub = true;
-        createEvent(sequence.currPosition, pad, HIGH, quantization);
+        if (sequence.recordEnabled) {
+          sequence.overdub = true;
+          createEvent(sequence.currPosition, pad, HIGH, quantization);
+        }
         triggerNote(pad, currOctave, ON);
         break;
       }
@@ -202,11 +205,11 @@ void TouchChannel::onRelease(uint8_t pad) {
       case QUANTIZE_LOOP:
         break;
       case MONO_LOOP:
-        createEvent(sequence.currPosition, pad, LOW, quantization);
+        if (sequence.recordEnabled) {
+          createEvent(sequence.currPosition, pad, LOW, quantization);
+          sequence.overdub = false;
+        }
         triggerNote(pad, currOctave, OFF);
-        sequence.overdub = false;
-        // create note OFF event
-        // enableLoop = true;
         break;
       }
     } else {
@@ -237,7 +240,7 @@ void TouchChannel::setMode(ChannelMode targetMode)
   prevMode = mode;
   switch (targetMode) {
     case MONO:
-      enableLoop = false;
+      sequence.playbackEnabled = false;
       mode = MONO;
       setAllLeds(LOW);               // I think this is just a "start from a clean slate" kinda thing
       setAllLeds(DIM_HIGH);
@@ -246,7 +249,7 @@ void TouchChannel::setMode(ChannelMode targetMode)
       triggerNote(currNoteIndex, currOctave, SUSTAIN);
       break;
     case MONO_LOOP:
-      enableLoop = true;
+      sequence.playbackEnabled = true;
       mode = MONO_LOOP;
       setAllLeds(LOW);
       setAllLeds(DIM_HIGH);
@@ -255,7 +258,7 @@ void TouchChannel::setMode(ChannelMode targetMode)
       triggerNote(currNoteIndex, currOctave, SUSTAIN);
       break;
     case QUANTIZE:
-      enableLoop = false;
+      sequence.playbackEnabled = false;
       mode = QUANTIZE;
       setAllLeds(LOW);
       setAllLeds(DIM_HIGH);
@@ -265,7 +268,7 @@ void TouchChannel::setMode(ChannelMode targetMode)
       triggerNote(currNoteIndex, currOctave, OFF);
       break;
     case QUANTIZE_LOOP:
-      enableLoop = true;
+      sequence.playbackEnabled = true;
       mode = QUANTIZE_LOOP;
       setAllLeds(LOW);
       setAllLeds(DIM_HIGH);

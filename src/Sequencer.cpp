@@ -21,12 +21,6 @@ void TouchChannel::handleSequence(int position)
                 {
                     // if new event overlaps succeeding events, clear those events
                     clearEvent(position);
-                    
-                    // NOTE may not need to do this
-                    // if (events[sequence.getNextPosition(position)].active)
-                    // {
-                    //     clearEvent(sequence.getNextPosition(position));
-                    // }
                 }
                 // Handle Sequence Events
                 else
