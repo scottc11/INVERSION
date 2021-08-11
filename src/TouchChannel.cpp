@@ -85,13 +85,15 @@ void TouchChannel::poll() {
       }
 
       
-      if (sequence.playbackEnabled) // HANDLE SEQUENCE
+      if (mode == MONO_LOOP || mode == QUANTIZE_LOOP) // HANDLE SEQUENCE
       {
         if (sequence.currStep != sequence.prevStep)
         {
           display->stepSequenceLED(this->channel, sequence.currStep, sequence.prevStep);
         }
-        handleSequence(sequence.currPosition);
+        if (sequence.playbackEnabled) {
+          handleSequence(sequence.currPosition);
+        }
       }
 
       tickerFlag = false;
@@ -166,6 +168,8 @@ void TouchChannel::onTouch(uint8_t pad) {
         if (sequence.recordEnabled) {
           sequence.overdub = true;
           createEvent(sequence.currPosition, pad, HIGH, quantization);
+        } else {
+          sequence.playbackEnabled = false;
         }
         triggerNote(pad, currOctave, ON);
         break;
@@ -208,6 +212,8 @@ void TouchChannel::onRelease(uint8_t pad) {
         if (sequence.recordEnabled) {
           createEvent(sequence.currPosition, pad, LOW, quantization);
           sequence.overdub = false;
+        } else {
+          sequence.playbackEnabled = true;
         }
         triggerNote(pad, currOctave, OFF);
         break;
