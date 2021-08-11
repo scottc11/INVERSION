@@ -508,11 +508,11 @@ void TouchChannel::setGlobalGate(bool state) {
 }
 
 /**
- * sets the +5v gate output via GPIO into a Schmitt-Trigger which is inverted polarity
+ * sets the +5v gate output via GPIO
 */
 void TouchChannel::setGate(bool state)
 {
-  gateState = !state;
+  gateState = state;
   gateOut.write(gateState);
   this->setGlobalGate(gateState);
 }
