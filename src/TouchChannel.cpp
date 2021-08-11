@@ -162,7 +162,7 @@ void TouchChannel::onTouch(uint8_t pad) {
         createChordEvent(sequence.currPosition, activeDegrees);
         break;
       case MONO_LOOP:
-        clearExistingNodes = true;
+        sequence.overdub = true;
         createEvent(sequence.currPosition, pad, HIGH, quantization);
         triggerNote(pad, currOctave, ON);
         break;
@@ -204,7 +204,7 @@ void TouchChannel::onRelease(uint8_t pad) {
       case MONO_LOOP:
         createEvent(sequence.currPosition, pad, LOW, quantization);
         triggerNote(pad, currOctave, OFF);
-        clearExistingNodes = false;
+        sequence.overdub = false;
         // create note OFF event
         // enableLoop = true;
         break;

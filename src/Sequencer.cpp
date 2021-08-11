@@ -3,7 +3,7 @@
 void TouchChannel::initSequencer()
 {
     sequence.init();
-    timeQuantizationMode = QUANT_NONE;
+    quantization = QUANT_8th;
     clearEventSequence(); // initialize values in sequence array
 }
 
@@ -16,21 +16,19 @@ void TouchChannel::handleSequence(int position)
         case MONO_LOOP:
             if (events[position].active)
             {
-                if (clearExistingNodes) // when a node is being created (touched degree has not yet been released), this flag gets set to true so that the sequence handler clears existing nodes
+                // Handle Sequence Overdubing
+                if (sequence.overdub && position != sequence.newEventPos) // when a node is being created (touched degree has not yet been released), this flag gets set to true so that the sequence handler clears existing nodes
                 {
-                    if (events[sequence.prevEventPos].gate == HIGH) // if previous event overlaps new event
-                    {
-                        int newPosition = position == 0 ? sequence.lengthPPQN - 1 : position - 1;
-                        createEvent(newPosition, events[sequence.prevEventPos].noteIndex, LOW, quantization); // create a copy of event with gate == LOW @ currPos - 1
-                        sequence.prevEventPos = newPosition;
-                    }
-                    // if new event overlaps succeeding events, overwrite those events
+                    // if new event overlaps succeeding events, clear those events
+                    clearEvent(position);
+                    
                     // NOTE may not need to do this
-                    if (events[sequence.getNextPosition(position)].active)
-                    {
-                        clearEvent(sequence.getNextPosition(position));
-                    }
+                    // if (events[sequence.getNextPosition(position)].active)
+                    // {
+                    //     clearEvent(sequence.getNextPosition(position));
+                    // }
                 }
+                // Handle Sequence Events
                 else
                 {
                     if (events[position].gate == HIGH)
@@ -40,11 +38,12 @@ void TouchChannel::handleSequence(int position)
                     }
                     else
                     {
+                        // CLEAN UP: if this 'active' LOW node does not match the last active HIGH node, delete it - it is a remnant of a previously deleted node
                         if (events[sequence.prevEventPos].noteIndex != events[position].noteIndex)
                         {
-                            clearEvent(position); // cleanup: if this 'active' LOW node does not match the last active HIGH node, delete it - it is a remnant of a previously deleted node
+                            clearEvent(position);
                         }
-                        else // set node.gate LOW
+                        else // set event.gate LOW
                         {
                             sequence.prevEventPos = position;                              // store position into variable
                             triggerNote(events[position].noteIndex, currOctave, OFF); // trigger note OFF
@@ -55,7 +54,7 @@ void TouchChannel::handleSequence(int position)
             break;
         case QUANTIZE_LOOP:
             if (events[position].active) {
-                if (clearExistingNodes) {
+                if (sequence.overdub) {
                     clearEvent(position);
                 } else {
                     setActiveDegrees(events[position].activeNotes);
@@ -96,28 +95,52 @@ int Q_ONE_28TH_NOTE[33] = { 0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 
 
 int TouchChannel::quantizePosition(int pos, TouchChannel::Quantization target) {
     switch (target) {
-        case QUARTER:
+        case QUANT_NONE:
+            return pos;
+        case QUANT_Quarter:
             return arr_find_closest_int(Q_QUARTER_NOTE, 2, pos);
-        case EIGTH:
+        case QUANT_8th:
             return arr_find_closest_int(Q_EIGTH_NOTE, 3, pos);
-        case SIXTEENTH:
+        case QUANT_16th:
             return arr_find_closest_int(Q_SIXTEENTH_NOTE, 4, pos);
-        case THIRTY_SECOND:
+        case QUANT_32nd:
             return arr_find_closest_int(Q_THIRTY_SECOND_NOTE, 9, pos);
-        case SIXTY_FOURTH:
+        case QUANT_64th:
             return arr_find_closest_int(Q_SIXTY_FOURTH_NOTE, 12, pos);
-        case ONE_28TH:
+        case QUANT_128th:
             return arr_find_closest_int(Q_ONE_28TH_NOTE, 33, pos);
     }
+    return pos;
 };
 
 void TouchChannel::createEvent(int position, int noteIndex, bool gate, Quantization quant)
 {
     if (sequenceContainsEvents == false) { sequenceContainsEvents = true; }
 
+    // handle quantization first, for overdubbing purposes
     // volatile int superQuant = quantizePosition(position, quant);
     // volatile int minorQuant = sequence.currStep * PPQN;
     // position = minorQuant + superQuant;
+
+    // if the previous event was a GATE HIGH event, re-position its succeeding GATE LOW event to the new events position - 1
+    // NOTE: you will also have to trigger the GATE LOW, so that the new event will generate a trigger event
+    if (events[sequence.prevEventPos].gate == HIGH)
+    {
+        int newPosition = position == 0 ? sequence.lengthPPQN - 1 : position - 1;
+        events[newPosition].noteIndex = events[sequence.prevEventPos].noteIndex;
+        events[newPosition].gate = LOW;
+        events[newPosition].active = true;
+        sequence.prevEventPos = newPosition; // pretend like this event got executed
+    }
+
+    // if this new event is a GATE LOW event, and after quantization there exists an event at the same position in the sequence,
+    // move this new event to the next available position @ the curr quantize level divided by 2 (to not interfere with next event), which will also have to be checked for any existing events.
+    // If there is an existing GATE HIGH event at the next position, this new event will have to be placed right before it executes, regardless of quantization
+    if (gate == LOW && events[position].active && events[position].gate == HIGH) {
+        position = position - 1;
+    }
+
+    sequence.newEventPos = position; // store all new events position
 
     events[position].noteIndex = noteIndex;
     events[position].gate = gate;

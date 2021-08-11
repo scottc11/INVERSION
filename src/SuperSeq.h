@@ -15,6 +15,8 @@ public:
     int currPosition;     // current
     int prevPosition;
     int prevEventPos;     // represents the position of the last event which got triggered (either HIGH or LOW)
+    int newEventPos;      // when a new event is created, we store the position in this variable in case we need it for something (ie. sequence overdubing)
+    bool overdub;         // flag gets set to true so that the sequence handler clears existing events
 
     void init() {
         this->setLength(DEFAULT_SEQ_LENGTH);

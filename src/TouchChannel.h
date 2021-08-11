@@ -10,7 +10,6 @@
 #include "TCA9544A.h"
 #include "SX1509.h"
 #include "MIDI.h"
-#include "QuantizeMethods.h"
 #include "BitwiseMethods.h"
 #include "ArrayMethods.h"
 #include "VoltPerOctave.h"
@@ -103,12 +102,13 @@ class TouchChannel {
 
     enum Quantization
     {
-      QUARTER = 96,
-      EIGTH = 48,
-      SIXTEENTH = 24,
-      THIRTY_SECOND = 12,
-      SIXTY_FOURTH = 6,
-      ONE_28TH = 3
+      QUANT_NONE = 0,
+      QUANT_Quarter = PPQN,
+      QUANT_8th = PPQN / 2,
+      QUANT_16th = PPQN / 4,
+      QUANT_32nd = PPQN / 8,
+      QUANT_64th = PPQN / 16,
+      QUANT_128th = PPQN / 32
     };
 
     int channel;                    // 0 based index to represent channel
@@ -139,12 +139,10 @@ class TouchChannel {
 
     // SEQUENCER variables
     SequenceNode events[PPQN * MAX_SEQ_LENGTH];
-    QuantizeMode timeQuantizationMode;
     Quantization quantization;
 
     int prevEventIndex; // index for disabling the last "triggered" event in the loop
     bool sequenceContainsEvents;
-    bool clearExistingNodes;   
     bool enableLoop = false;   // "Event Triggering Loop" -> This will prevent looped events from triggering if a new event is currently being created
 
     // quantizer variables
@@ -201,7 +199,6 @@ class TouchChannel {
       output1V.dacChannel = _dacChannel;
       midi = midi_p;
       channel = _channel;
-      quantization = EIGTH;
     };
 
     void init();
