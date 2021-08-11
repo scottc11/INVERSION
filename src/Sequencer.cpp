@@ -18,15 +18,15 @@ void TouchChannel::handleSequence(int position)
             {
                 if (clearExistingNodes) // when a node is being created (touched degree has not yet been released), this flag gets set to true so that the sequence handler clears existing nodes
                 {
-                    int newPosition;
                     if (events[sequence.prevEventPos].gate == HIGH) // if previous event overlaps new event
                     {
-                        newPosition = position == 0 ? sequence.lengthPPQN - 1 : position - 1;
+                        int newPosition = position == 0 ? sequence.lengthPPQN - 1 : position - 1;
                         createEvent(newPosition, events[sequence.prevEventPos].noteIndex, LOW, quantization); // create a copy of event with gate == LOW @ currPos - 1
                         sequence.prevEventPos = newPosition;
                     }
-                    // this might be clearing the event that was just recorded
-                    if (events[sequence.getNextPosition(position)].active) // ??? if new event overlaps succeeding events, overwrite those events
+                    // if new event overlaps succeeding events, overwrite those events
+                    // NOTE may not need to do this
+                    if (events[sequence.getNextPosition(position)].active)
                     {
                         clearEvent(sequence.getNextPosition(position));
                     }
