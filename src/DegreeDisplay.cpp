@@ -23,20 +23,41 @@ void DegreeDisplay::clear()
     }
 }
 
-void DegreeDisplay::setSequenceLEDs(int chan, int length, bool on)
+/**
+ * @brief illuminates the number of LEDs equal to sequence length divided by 2
+*/
+void DegreeDisplay::setSequenceLEDs(int chan, int length, int diviser, bool on)
 {
     // illuminate each channels sequence length
-    for (int i = 0; i < length; i++)
+    for (int i = 0; i < length / diviser; i++)
     {
         ledMatrix.setPWM(CHAN_DISPLAY_LED_MAP[chan][i], on ? OK_PWM_MID : 0);
     }
+
+    if (length % 2 == 1)
+    {
+        int oddLedIndex = (length / diviser);
+        ledMatrix.setPWM(CHAN_DISPLAY_LED_MAP[chan][oddLedIndex], on ? OK_PWM_LOW : 0);
+    }
 }
 
-void DegreeDisplay::stepSequenceLED(int chan, int currStep, int prevStep) {
-    // set currStep PWM High
-    ledMatrix.setPWM(CHAN_DISPLAY_LED_MAP[chan][currStep], OK_PWM_HIGH);
-    // set prevStep PWM back to Mid
-    ledMatrix.setPWM(CHAN_DISPLAY_LED_MAP[chan][prevStep], OK_PWM_MID);
+void DegreeDisplay::stepSequenceLED(int chan, int currStep, int prevStep, int length) {
+    if (currStep % 2 == 0) {
+        // set currStep PWM High
+        ledMatrix.setPWM(CHAN_DISPLAY_LED_MAP[chan][currStep / 2], OK_PWM_HIGH);
+
+        // handle odd sequence lengths.
+        //  The last LED in sequence gets set to a different PWM
+        if (prevStep == length - 1 && length % 2 == 1)
+        {
+            ledMatrix.setPWM(CHAN_DISPLAY_LED_MAP[chan][prevStep / 2], OK_PWM_LOW);
+        }
+        // regular sequence lengths
+        else {
+            // set prevStep PWM back to Mid
+            ledMatrix.setPWM(CHAN_DISPLAY_LED_MAP[chan][prevStep / 2], OK_PWM_MID);
+        }
+    }
 }
 
 /**

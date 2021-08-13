@@ -89,7 +89,7 @@ void TouchChannel::poll() {
       {
         if (sequence.currStep != sequence.prevStep)
         {
-          display->stepSequenceLED(this->channel, sequence.currStep, sequence.prevStep);
+          display->stepSequenceLED(this->channel, sequence.currStep, sequence.prevStep, sequence.length);
         }
         if (sequence.playbackEnabled) {
           handleSequence(sequence.currPosition);
@@ -104,7 +104,7 @@ void TouchChannel::poll() {
 
 void TouchChannel::enableSequenceRecording() {
   sequence.recordEnabled = true;
-  display->setSequenceLEDs(this->channel, sequence.length, true);
+  display->setSequenceLEDs(this->channel, sequence.length, 2, true);
   if (mode == MONO) {
     setMode(MONO_LOOP);
   } else if (mode == QUANTIZE) {
@@ -125,7 +125,7 @@ void TouchChannel::disableSequenceRecording() {
   if (sequenceContainsEvents) {   // if a touch event was recorded, remain in loop mode
     return;
   } else {             // if no touch event recorded, revert to previous mode
-    display->setSequenceLEDs(this->channel, sequence.length, false);
+    display->setSequenceLEDs(this->channel, sequence.length, 2, false);
     if (mode == MONO_LOOP) {
       setMode(MONO);
     } else if (mode == QUANTIZE_LOOP) {
@@ -504,7 +504,7 @@ void TouchChannel::resetSequence()
 {
   sequence.reset();
   if (sequenceContainsEvents) {
-    display->stepSequenceLED(this->channel, sequence.currStep, sequence.prevStep);
+    display->stepSequenceLED(this->channel, sequence.currStep, sequence.prevStep, sequence.length);
     handleSequence(sequence.currPosition);
   }
 }
@@ -608,12 +608,12 @@ void TouchChannel::benderTriStateCallback(Bender::BendState state)
     case BEND_MENU:
       if (state == Bender::BendState::BEND_UP) {
         sequence.setLength(sequence.length + 1);
-        display->setSequenceLEDs(this->channel, sequence.length, true);
+        display->setSequenceLEDs(this->channel, sequence.length, 2, true);
       }
       else if (state == Bender::BendState::BEND_DOWN) {
-        display->setSequenceLEDs(this->channel, sequence.length, false);
+        display->setSequenceLEDs(this->channel, sequence.length, 2, false);
         sequence.setLength(sequence.length - 1);
-        display->setSequenceLEDs(this->channel, sequence.length, true);
+        display->setSequenceLEDs(this->channel, sequence.length, 2, true);
       }
       break;
   }
@@ -666,7 +666,7 @@ int TouchChannel::setBenderMode(BenderMode targetMode /*INCREMENT_BENDER_MODE*/)
       setPitchBendLED(HIGH);
       break;
     case BEND_MENU:
-      display->setSequenceLEDs(channel, sequence.length, true);
+      display->setSequenceLEDs(channel, sequence.length, 2, true);
       break;
   }
   return benderMode;

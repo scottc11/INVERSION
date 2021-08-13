@@ -23,8 +23,8 @@ public:
 
     void init();
     void clear();
-    void setSequenceLEDs(int chan, int length, bool on);
-    void stepSequenceLED(int chan, int currStep, int prevStep);
+    void setSequenceLEDs(int chan, int length, int diviser, bool on);
+    void stepSequenceLED(int chan, int currStep, int prevStep, int length);
     void benderCalibration();
 private:
     IS31FL3739 ledMatrix;

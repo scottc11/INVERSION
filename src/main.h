@@ -78,7 +78,7 @@
 #define SLEW_CV_BUFFER                 1000
 
 #define DEFAULT_SEQ_LENGTH     8
-#define MAX_SEQ_LENGTH         16
+#define MAX_SEQ_LENGTH         32
 
 #define DEFAULT_VOLTAGE_ADJMNT      200
 #define MAX_CALIB_ATTEMPTS          20
@@ -86,37 +86,6 @@
 #define VCO_SAMPLE_RATE_US          125     // 8000hz is equal to 125us (microseconds)
 #define VCO_ZERO_CROSSING           60000   // The zero crossing is erelivant as the pre-opamp ADC is not bi-polar. Any value close to the ADC ceiling seems to work
 #define VCO_ZERO_CROSS_THRESHOLD    500     // for handling hysterisis at zero crossing point
-
-// 83.333, 166.666, 249.999, 333.332, 416.66499999999996, 499.99799999999993, 583.3309999999999, 666.6639999999999, 749.9969999999998, 833.3299999999998, 916.6629999999998, 999.9959999999998
-// 12-bit values => 83, 167, 250, 333, 417, 500, 583, 667, 750, 833, 917, 1000
-
-// 16-bit values => 0,   1092.25, 2184.5, 3276.75, 4369, 5461.25, 6553.5, 7645.75, 8738, 9830.25, 10922.5, 12014.75, 13107
-//                       1092     2184    3277     4369  5461     6553    7646     8738  9830     10922    12015     13107   1499
-//                  B     C        C#      D        D#    E        F       F#       G     G#       A        A#        B       C
-
-// 65535 / 12 = 5461.25 * 2 = 10922.5
-
-// const int DAC_NOTE_MAP[8][3] = {
-//   { 0, 83, 167 },
-//   { 167, 250, 333 },
-//   { 333, 417, 500 },
-//   { 417, 500, 583 },
-//   { 583, 667, 750 },
-//   { 750, 833, 917 },
-//   { 917, 1000, 1083 },
-//   { 1000, 1083, 1083 }
-// };
-
-// const int DAC_NOTE_MAP[8][3] = {
-//   { 0, 1092, 2184 },
-//   { 2184, 3277, 4369 },
-//   { 4369, 5461, 6553 },
-//   { 5461, 6553, 7646 },
-//   { 7646, 8738, 9830 },
-//   { 9830, 10922, 12015 },
-//   { 12015, 13107, 14199 },
-//   { 13107, 14199, 15291 }
-// };
 
 const int DAC_NOTE_MAP[8][3] = {
   { 0, 1097, 2193 },
