@@ -24,7 +24,6 @@ bool VCOCalibrator::bruteForceCalibration()
     float avgFreq = 0;
     float prevAvgFreq = 0;
     float tolerance = 0.1;   // tolerable frequency tuning difference
-    bool overshoot = false;  // 
 
     for (int i = 0; i < DAC_1VO_ARR_SIZE; i++)
     {
@@ -79,7 +78,6 @@ bool VCOCalibrator::bruteForceCalibration()
                 { 
                     if (prevAvgFreq < targetFreq - tolerance)
                     {
-                        overshoot = true;
                         dacAdjustment = (dacAdjustment / 2) + 1; // + 1 so it never becomes zero
                     }
                     currDacValue -= dacAdjustment;
@@ -89,7 +87,6 @@ bool VCOCalibrator::bruteForceCalibration()
                 {
                     if (prevAvgFreq > targetFreq + tolerance)
                     {
-                        overshoot = false;
                         dacAdjustment = (dacAdjustment / 2) + 1; // so it never becomes zero
                     }
                     currDacValue += dacAdjustment;

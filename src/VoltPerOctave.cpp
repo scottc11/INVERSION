@@ -1,9 +1,9 @@
 #include "VoltPerOctave.h"
 
-void VoltPerOctave::init() {
-    
+void VoltPerOctave::init()
+{
     dac->init();
-    setPitchBendRange(1); // default to a whole tone
+    setPitchBendRange(5);
 }
 
 /**
@@ -51,11 +51,19 @@ void VoltPerOctave::updateDAC(int index, uint16_t pitchBend)
 }
 
 /**
- * @brief copy default pre-calibrated dac voltage values into class object member
+ * The values in the DAC voltage map are entirely dependant on the op-amp amplification
+ * 
+ * @brief This function takes pre-set values based on the op-amp gain configuration, and generates an array
+ * of 16-bit values which are evenly spaced apart by the 1 v/o equivelent of a semitone
 */
 void VoltPerOctave::resetVoltageMap() {
+    float voltPerBit = ((float)V_OUT_MAX - (float)V_OUT_MIN) / (float)DAC_RESOLUTION;
+    uint16_t octave = 1.0 / voltPerBit;
+    uint16_t floor = (float)CALIBRATION_FLOOR / voltPerBit;
+    uint16_t semitone = octave / 12;
+    
     for (int i = 0; i < DAC_1VO_ARR_SIZE; i++)
     {
-        dacVoltageMap[i] = DAC_VOLTAGE_VALUES[i];
+        dacVoltageMap[i] = floor + (semitone * i);
     }
 }

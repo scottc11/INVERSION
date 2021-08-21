@@ -10,15 +10,15 @@
 #include "TCA9544A.h"
 #include "SX1509.h"
 #include "MIDI.h"
-#include "QuantizeMethods.h"
 #include "BitwiseMethods.h"
 #include "ArrayMethods.h"
 #include "VoltPerOctave.h"
+#include "SuperSeq.h"
+#include "DegreeDisplay.h"
 
-#define CHANNEL_IO_MODE_PIN 9
-#define CHANNEL_LED_MUX_SEL 8
-#define CHANNEL_MODE_LED 10
-#define CHANNEL_GATE_LED 11
+#define CHANNEL_REC_LED 11
+#define CHANNEL_RATCHET_LED 10
+#define CHANNEL_PB_LED 9
 #define NULL_NOTE_INDEX 99  // used to identify a 'null' or 'deleted' sequence event
 
 static const int OCTAVE_LED_PINS[4] = { 3, 2, 1, 0 };               // io pin map for octave LEDs
@@ -89,7 +89,9 @@ class TouchChannel {
       BEND_OFF = 0,
       PITCH_BEND = 1,
       RATCHET = 2,
-      RATCHET_PITCH_BEND = 3
+      RATCHET_PITCH_BEND = 3,
+      INCREMENT_BENDER_MODE = 4,
+      BEND_MENU = 5
     };
 
     enum UIMode { // not yet implemented
@@ -98,12 +100,24 @@ class TouchChannel {
       PB_RANGE_UI
     };
 
+    enum Quantization
+    {
+      QUANT_NONE = 0,
+      QUANT_Quarter = PPQN,
+      QUANT_8th = PPQN / 2,
+      QUANT_16th = PPQN / 4,
+      QUANT_32nd = PPQN / 8,
+      QUANT_64th = PPQN / 16,
+      QUANT_128th = PPQN / 32
+    };
+
     int channel;                    // 0 based index to represent channel
     bool isSelected;
     bool gateState;                 // the current state of the gate output pin
     ChannelMode mode;               // which mode channel is currently in
     ChannelMode prevMode;           // used for reverting to previous mode when toggling between UI modes
     UIMode uiMode;                  // for settings and alt LED uis
+    int benderMode;
     DigitalOut gateOut;             // gate output pin
     DigitalOut *globalGateOut;      // 
     Timer *timer;                   // timer for handling duration based touch events
@@ -111,36 +125,25 @@ class TouchChannel {
     MIDI *midi;                     // pointer to mbed midi instance
     MPR121 *touchPads;
     SX1509 *io;                     // IO Expander
+    DegreeDisplay *display;
     Degrees *degrees;
-    InterruptIn ioInterupt;         // for SC1509 3-stage toggle switch + tactile mode button
     AnalogIn cvInput;               // CV input pin for quantizer mode
 
     volatile bool tickerFlag;        // each time the clock gets ticked, this flag gets set to true - then false in polling loop
     volatile bool switchHasChanged;  // toggle switches interupt flag
     volatile bool touchDetected;
-    volatile bool modeChangeDetected;
 
     VoltPerOctave output1V;
-
     Bender bender;
+    SuperSeq sequence;
 
     // SEQUENCER variables
     SequenceNode events[PPQN * MAX_SEQ_LENGTH];
-    QuantizeMode timeQuantizationMode;
+    Quantization quantization;
+
     int prevEventIndex; // index for disabling the last "triggered" event in the loop
     bool sequenceContainsEvents;
-    bool clearExistingNodes;   
-    bool deleteEvents;
     bool enableLoop = false;   // "Event Triggering Loop" -> This will prevent looped events from triggering if a new event is currently being created
-    bool recordEnabled;        //
-    int prevNodePosition;      // represents the last node in the sequence which got triggered (either HIGH or LOW)
-    volatile int numLoopSteps; // how many steps the sequence contains (before applying the multiplier)
-    volatile int currStep;     // the current 'step' of the loop (lowest value == 0)
-    volatile int currPosition; // the current position in the in the entire sequence (measured by PPQN)
-    volatile int currTick;     // the current PPQN position of the step (0..PPQN) (lowest value == 0)
-    int totalPPQN;             // how many PPQN the sequence currently contains (equal to totalSteps * PPQN)
-    int totalSteps;            // how many Steps the sequence contains (in total ie. numLoopSteps * loopMultiplier)
-    int loopMultiplier;        // number between 1 and 4 based on Octave Leds of channel
 
     // quantizer variables
     int activeDegrees;                    // 8 bits to determine which scale degrees are presently active/inactive (active = 1, inactive= 0)
@@ -163,9 +166,6 @@ class TouchChannel {
 
     int currNoteIndex;
     int prevNoteIndex;
-
-    int currModeBtnState;        // ** to be refractored into MomentaryButton class
-    int prevModeBtnState;        // ** to be refractored into MomentaryButton class
     
     bool freezeChannel;          //
 
@@ -175,29 +175,29 @@ class TouchChannel {
         Ticker *ticker_ptr,
         DigitalOut *globalGateOut_ptr,
         PinName gateOutPin,
-        PinName ioIntPin,
         PinName cvInputPin,
         PinName pbInputPin,
+        bool pbInverted,
         MPR121 *touch_ptr,
         SX1509 *io_ptr,
-        Degrees *degrees_ptr,
+        DegreeDisplay *display_ptr,
+        Degrees * degrees_ptr,
         MIDI *midi_p,
         DAC8554 *dac_ptr,
         DAC8554::Channels _dacChannel,
         DAC8554 *pb_dac_ptr,
-        DAC8554::Channels pb_dac_channel
-        ) : gateOut(gateOutPin), ioInterupt(ioIntPin, PullUp), cvInput(cvInputPin), bender(pb_dac_ptr, pb_dac_channel, pbInputPin)
+        DAC8554::Channels pb_dac_channel) : gateOut(gateOutPin), cvInput(cvInputPin), bender(pb_dac_ptr, pb_dac_channel, pbInputPin, pbInverted)
     {
       globalGateOut = globalGateOut_ptr;
       timer = timer_ptr;
       ticker = ticker_ptr;
       touchPads = touch_ptr;
       io = io_ptr;
+      display = display_ptr;
       degrees = degrees_ptr;
       output1V.dac = dac_ptr;
       output1V.dacChannel = _dacChannel;
       midi = midi_p;
-      ioInterupt.fall(callback(this, &TouchChannel::ioInteruptFn));
       channel = _channel;
     };
 
@@ -206,33 +206,26 @@ class TouchChannel {
     void onTouch(uint8_t pad);
     void onRelease(uint8_t pad);
 
-    void ioInteruptFn() { modeChangeDetected = true; }
-
     void initIOExpander();
-    void setLEDMux(LedState state);
     void setLed(int index, LedState state, bool settingUILed=false);
     void setOctaveLed(int octave, LedState state, bool settingUILed=false);
-    void setModeLed(LedState state);
-    void setGateLed(LedState state);
+    void setRecordLED(LedState state);
+    void setRatchetLED(LedState state);
+    void setPitchBendLED(LedState state);
     void setAllLeds(int state);
     void updateOctaveLeds(int octave);
-    void updateLoopMultiplierLeds();
     void updateLeds(uint8_t touched);  // could be obsolete
 
     // BENDER
     void benderActiveCallback(uint16_t value);
     void benderIdleCallback();
-    int setBenderMode(int targetMode = 0);
+    void benderTriStateCallback(Bender::BendState state);
+    int setBenderMode(BenderMode targetMode = INCREMENT_BENDER_MODE);
 
     void updateDegrees();
     void handleIOInterupt();
     void setMode(ChannelMode targetMode);
-
-    void tickClock();
-    void stepClock();
-    void resetClock();
     
-    int quantizePosition(int position);
     int calculateMIDINoteValue(int index, int octave);
 
     void setOctave(int value);
@@ -240,34 +233,29 @@ class TouchChannel {
     void setGate(bool state);
     void setGlobalGate(bool state);
     void freeze(bool enable);
-    void reset();
 
     // UI METHODS
     void enableUIMode(UIMode target);
     void disableUIMode();
-    void updateLoopLengthUI();
-    void handleLoopLengthUI();
     void updatePitchBendRangeUI();
 
     // SEQUENCER METHODS
     void initSequencer();
+    void resetSequence();
+    int quantizePosition(int pos, TouchChannel::Quantization target);
     void clearEvent(int position);
     void clearEventSequence();
     void clearPitchBendSequence();
-    void createEvent(int position, int noteIndex, bool gate);
+    void createEvent(int position, int noteIndex, bool gate, Quantization quant);
     void createChordEvent(int position, uint8_t notes);
     void createPitchBendEvent(int position, uint16_t pitchBend);
-    void clearLoop(); // refractor into clearEventSequence()
-    void enableLoopMode();
-    void disableLoopMode();
-    void setLoopLength(int num);
-    void setLoopMultiplier(int value);
-    void setLoopTotalPPQN();  // refractor into metronom class
-    void setLoopTotalSteps(); // refractor into metronom class
+    void enableSequenceRecording();
+    void disableSequenceRecording();
     void handleSequence(int position);
 
     // QUANTIZER METHODS
     void initQuantizer();
+    void toggleQuantizerMode();
     void handleCVInput();
     void setActiveDegrees(int degrees);
     void updateActiveDegreeLeds(uint8_t degrees);

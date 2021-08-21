@@ -8,8 +8,9 @@ void GlobalControl::init() {
   // try adding back mbedignore libraries and debug
   metronome->attachTickCallback(callback(this, &GlobalControl::tickChannels));
 
-  degrees->init();
   degrees->attachCallback(callback(this, &GlobalControl::handleDegreeChange));
+
+  display->init();
 
   io.init();
   io.setDirection(MCP23017_PORTA, 0xff);
@@ -19,32 +20,25 @@ void GlobalControl::init() {
   io.setPullUp(MCP23017_PORTA, 0xff);
   io.setPullUp(MCP23017_PORTB, 0xff);
   io.setInputPolarity(MCP23017_PORTA, 0xff);
-  io.setInputPolarity(MCP23017_PORTB, 0xff);
+  io.setInputPolarity(MCP23017_PORTB, 0b01111111);
   io.digitalReadAB(); // clear any stray interupts
   
-  leds.init();
-  leds.setPullUp(0x00);
-  leds.setConfig(0b00100000); // disable address auto-increment
-  leds.setDirection(0x00);
-  leds.setInterupt(0x00);
-  leds.writePins(0x00);
-  leds.readPins(); // clear stray interputs
-  
+
   freezeLED.write(0);
   recLED.write(0);
 
   selectChannel(0);  // select a default channel
-
-  setChannelBenderMode();
 }
 
 
 
 void GlobalControl::tickChannels() {
-  channels[0]->tickClock();
-  channels[1]->tickClock();
-  channels[2]->tickClock();
-  channels[3]->tickClock();
+  for (int i = 0; i < 4; i++)
+  {
+    channels[i]->sequence.advance();
+    channels[i]->tickerFlag = true;
+  }
+  
 }
 
 
@@ -88,41 +82,9 @@ void GlobalControl::selectChannel(int channel) {
   channels[selectedChannel]->isSelected = true;
 }
 
-void GlobalControl::setChannelLoopMultiplier(int pad) {
-  switch (pad) {
-    case 0:  channels[2]->setLoopMultiplier(1); break;
-    case 1:  channels[2]->setLoopMultiplier(2); break;
-    case 2:  channels[2]->setLoopMultiplier(3); break;
-    case 3:  channels[2]->setLoopMultiplier(4); break;
-    case 4:  channels[3]->setLoopMultiplier(1); break;
-    case 5:  channels[3]->setLoopMultiplier(2); break;
-    case 6:  channels[3]->setLoopMultiplier(3); break;
-    case 7:  channels[3]->setLoopMultiplier(4); break;
-    case 8:  channels[0]->setLoopMultiplier(1); break;
-    case 9:  channels[0]->setLoopMultiplier(2); break;
-    case 10: channels[0]->setLoopMultiplier(3); break;
-    case 11: channels[0]->setLoopMultiplier(4); break;
-    case 12: channels[1]->setLoopMultiplier(1); break;
-    case 13: channels[1]->setLoopMultiplier(2); break;
-    case 14: channels[1]->setLoopMultiplier(3); break;
-    case 15: channels[1]->setLoopMultiplier(4); break;
-  }
-}
-
 void GlobalControl::setChannelBenderMode(int chan)
 {
-  ledStates &= ~(0x3 << (2 * chan));                          // clear previous value of target bits
-  ledStates |= channels[chan]->setBenderMode() << (2 * chan); // set target bits to new value
-  leds.writePins(ledStates);
-}
-
-void GlobalControl::setChannelBenderMode() {
-  for (int i = 0; i < 4; i++)
-  {
-    ledStates &= ~(0x3 << (2 * i));                       // clear previous value of target bits
-    ledStates |= channels[i]->setBenderMode() << (2 * i); // set target bits to new value
-  }
-  leds.writePins(ledStates);
+  channels[chan]->setBenderMode();
 }
 
 /**
@@ -164,33 +126,59 @@ void GlobalControl::pollButtons()
 void GlobalControl::handleButtonPress(int pad) {
     
   switch (pad) {
+    case CTRL_A:
+      channels[0]->toggleQuantizerMode();
+      break;
+    case CTRL_B:
+      channels[1]->toggleQuantizerMode();
+      break;
+    case CTRL_C:
+      channels[2]->toggleQuantizerMode();
+      break;
+    case CTRL_D:
+      channels[3]->toggleQuantizerMode();
+      break;
     case FREEZE:
       handleFreeze(true);
       break;
+
     case RESET:
+      handleReset();
       break;
-    case CALIBRATE_A:
+    
+    case Gestures::CALIBRATE_A:
       calibrateChannel(0);
       break;
-    case CALIBRATE_B:
+    case Gestures::CALIBRATE_B:
       calibrateChannel(1);
       break;
-    case CALIBRATE_C:
+    case Gestures::CALIBRATE_C:
       calibrateChannel(2);
       break;
-    case CALIBRATE_D:
+    case Gestures::CALIBRATE_D:
       calibrateChannel(3);
       break;
-    case CALIBRATE_BENDER:
+    
+    case Gestures::CALIBRATE_BENDER:
       if (this->mode == CALIBRATING_BENDER) {
         this->saveCalibrationToFlash();
+        display->clear();
         this->mode = DEFAULT;
       } else {
         this->mode = CALIBRATING_BENDER;
+        display->benderCalibration();
       }
       break;
+    
+    case Gestures::RESET_CALIBRATION_TO_DEFAULT:
+      display->benderCalibration();
+      saveCalibrationToFlash(true);
+      display->clear();
+      break;
+    
     case BEND_MODE:
       break;
+    
     case BEND_MODE_A:
       setChannelBenderMode(0);
       break;
@@ -203,6 +191,20 @@ void GlobalControl::handleButtonPress(int pad) {
     case BEND_MODE_D:
       setChannelBenderMode(3);
       break;
+    
+    case CLEAR_SEQ_A:
+      this->clearChannelSequence(0);
+      break;
+    case CLEAR_SEQ_B:
+      this->clearChannelSequence(1);
+      break;
+    case CLEAR_SEQ_C:
+      this->clearChannelSequence(2);
+      break;
+    case CLEAR_SEQ_D:
+      this->clearChannelSequence(3);
+      break;
+
     case PB_RANGE:
       channels[0]->enableUIMode(TouchChannel::PB_RANGE_UI);
       channels[1]->enableUIMode(TouchChannel::PB_RANGE_UI);
@@ -210,25 +212,26 @@ void GlobalControl::handleButtonPress(int pad) {
       channels[3]->enableUIMode(TouchChannel::PB_RANGE_UI);
       break;
     case SEQ_LENGTH:
-      // channels[0]->enableUIMode(TouchChannel::LOOP_LENGTH_UI);
-      // channels[1]->enableUIMode(TouchChannel::LOOP_LENGTH_UI);
-      // channels[2]->enableUIMode(TouchChannel::LOOP_LENGTH_UI);
-      // channels[3]->enableUIMode(TouchChannel::LOOP_LENGTH_UI);
+      this->display->clear();
+      for (int chan = 0; chan < 4; chan++)
+      {
+        channels[chan]->setBenderMode(TouchChannel::BenderMode::BEND_MENU);
+      }
       break;
     case RECORD:
       if (!recordEnabled) {
         recLED.write(1);
-        channels[0]->enableLoopMode();
-        channels[1]->enableLoopMode();
-        channels[2]->enableLoopMode();
-        channels[3]->enableLoopMode();
+        channels[0]->enableSequenceRecording();
+        channels[1]->enableSequenceRecording();
+        channels[2]->enableSequenceRecording();
+        channels[3]->enableSequenceRecording();
         recordEnabled = true;
       } else {
         recLED.write(0);
-        channels[0]->disableLoopMode();
-        channels[1]->disableLoopMode();
-        channels[2]->disableLoopMode();
-        channels[3]->disableLoopMode();
+        channels[0]->disableSequenceRecording();
+        channels[1]->disableSequenceRecording();
+        channels[2]->disableSequenceRecording();
+        channels[3]->disableSequenceRecording();
         recordEnabled = false;
       }
       break;
@@ -252,17 +255,27 @@ void GlobalControl::handleButtonRelease(int pad)
       channels[2]->disableUIMode();
       channels[3]->disableUIMode();
       break;
+    case CLEAR_SEQ:
+      if (!gestureFlag) {
+        for (int i = 0; i < 4; i++)
+        {
+          channels[i]->clearEventSequence();
+          channels[i]->disableSequenceRecording();
+        }
+      }
+      gestureFlag = false;
+      break;
     case SEQ_LENGTH:
-      channels[0]->disableUIMode();
-      channels[1]->disableUIMode();
-      channels[2]->disableUIMode();
-      channels[3]->disableUIMode();
+      this->display->clear();
+      for (int chan = 0; chan < 4; chan++)
+      {
+        if (channels[chan]->sequenceContainsEvents) {
+          display->setSequenceLEDs(chan, channels[chan]->sequence.length, 2, true);
+        }
+        channels[chan]->setBenderMode(TouchChannel::BenderMode::BEND_OFF);
+      }
       break;
     case RECORD:
-      // channels[0]->disableLoopMode();
-      // channels[1]->disableLoopMode();
-      // channels[2]->disableLoopMode();
-      // channels[3]->disableLoopMode();
       break;
   }
 }
@@ -282,6 +295,7 @@ bool GlobalControl::handleGesture() {
 */
 void GlobalControl::handleFreeze(bool enable) {
   // freeze all channels
+  freezeLED.write(enable);
   channels[0]->freeze(enable);
   channels[1]->freeze(enable);
   channels[2]->freeze(enable);
@@ -292,12 +306,13 @@ void GlobalControl::handleFreeze(bool enable) {
 /**
  * HANDLE RESET
 */
-void GlobalControl::handleClockReset() {
+void GlobalControl::handleReset() {
   // reset all channels
-  channels[0]->reset();
-  channels[1]->reset();
-  channels[2]->reset();
-  channels[3]->reset();
+  for (int i = 0; i < 4; i++)
+  {
+    channels[i]->resetSequence();
+  }
+  
 }
 
 
@@ -327,7 +342,13 @@ void GlobalControl::saveCalibrationToFlash(bool reset /* false */)
     {
       // determine buffer index position based on channel
       int index = i + CALIBRATION_ARR_SIZE * chan;
-      // copy to buffer
+      
+      // reset to default values before copying to buffer
+      if (reset) {
+        channels[chan]->output1V.resetVoltageMap();
+      }
+
+      // copy values to buffer
       buffer[index] = channels[chan]->output1V.dacVoltageMap[i];
     }
     // load max and min Bender calibration data into buffer (two 16bit chars)
@@ -339,6 +360,8 @@ void GlobalControl::saveCalibrationToFlash(bool reset /* false */)
   flash.erase(flashAddr, flash.get_sector_size(flashAddr));     // must erase all data before a write
   flash.program(buffer, flashAddr, NUM_FLASH_CHANNEL_BYTES);
   flash.deinit();
+  
+  this->pollButtons(); // BUG: need to call this or else interupt gets stuck
 }
 
 void GlobalControl::loadCalibrationDataFromFlash() {
@@ -365,3 +388,8 @@ void GlobalControl::calibrateBenders() {
   }
 }
 
+void GlobalControl::clearChannelSequence(int chan) {
+  gestureFlag = true;
+  channels[chan]->clearEventSequence();
+  channels[chan]->disableSequenceRecording();
+}
