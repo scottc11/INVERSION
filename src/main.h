@@ -2,6 +2,7 @@
 #define __MAIN_H
 
 #include <mbed.h>
+#include "rtos.h"
 #include "target/TARGET_OK_BOARD_F446RE/PinNames.h"
 // #include <arm_math.h> // ARM DSP functions
 
