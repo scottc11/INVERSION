@@ -1,0 +1,11 @@
+{
+    "OK_BOARD_F446RE": {
+        "inherits": [
+            "MCU_STM32F446xE"
+        ],
+        "detect_code": [
+            "0777"
+        ],
+        "device_name": "STM32F446RETx"
+    }
+}

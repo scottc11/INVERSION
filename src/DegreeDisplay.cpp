@@ -10,7 +10,7 @@ void DegreeDisplay::init()
         {
             ledMatrix.setPWM(i - 1, 0);
         }
-        wait_ms(10);
+        wait_ns(100);
     }
     ledMatrix.setPWM(63, 0);
 }

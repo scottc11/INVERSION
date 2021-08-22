@@ -1,4 +1,5 @@
 {
+  "artifact_name": "ok-degree",
   "requires": [
     "bare-metal"
   ],
@@ -8,6 +9,9 @@
       "target.lse_available": 0,
       "target.stdio_uart_tx": "PA_2",
       "target.stdio_uart_rx": "PA_3"
+    },
+    "OK_BOARD_F446RE": {
+      "platform.stdio-baud-rate": 9600
     }
   }
 }
